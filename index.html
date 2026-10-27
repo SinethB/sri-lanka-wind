@@ -38,16 +38,20 @@
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased}
 body{overflow:hidden}
 #map{position:absolute;inset:0;background:#050e16}
-.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.52) saturate(.4) contrast(1.12)}
+/* Softer invert so coastlines, roads and labels stay readable */
+.leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) brightness(.74) saturate(.58) contrast(1.02)}
 #field,#wind{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#field{z-index:440;opacity:.74}
+#field{z-index:440;opacity:.48}
+#field.sea-layer{opacity:.36}
 #wind{z-index:450}
+.lk-border{stroke:#2aefc8;stroke-width:1.8;stroke-opacity:.8;fill:none;pointer-events:none}
+.lk-fill{fill:rgba(42,239,200,.035);stroke:none;pointer-events:none}
 
 body::after{
   content:"";position:fixed;inset:0;pointer-events:none;z-index:500;
   background:
-    radial-gradient(ellipse 85% 75% at 50% 35%,transparent 35%,rgba(4,10,16,.6) 100%),
-    linear-gradient(180deg,rgba(4,10,16,.15) 0%,transparent 12%,transparent 88%,rgba(4,10,16,.25) 100%);
+    radial-gradient(ellipse 90% 80% at 50% 40%,transparent 45%,rgba(4,10,16,.4) 100%),
+    linear-gradient(180deg,rgba(4,10,16,.1) 0%,transparent 10%,transparent 90%,rgba(4,10,16,.18) 100%);
 }
 
 .panel{
@@ -667,6 +671,26 @@ body.dist #detail{display:none!important}
   else map.fitBounds([[5.7,79.4],[9.9,82.1]],{padding:[60,60]});
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
 
+  /* Simplified Sri Lanka coastline outline for clear border visibility */
+  var LK_OUTLINE={type:'Feature',geometry:{type:'Polygon',coordinates:[[
+    [79.52,9.82],[79.70,9.82],[80.05,9.85],[80.25,9.75],[80.45,9.65],[80.70,9.55],
+    [81.00,9.35],[81.20,9.20],[81.45,9.05],[81.70,8.85],[81.85,8.60],[81.90,8.35],
+    [81.85,8.10],[81.80,7.85],[81.75,7.55],[81.80,7.30],[81.85,7.00],[81.80,6.70],
+    [81.70,6.45],[81.55,6.25],[81.40,6.10],[81.20,5.95],[80.95,5.90],[80.70,5.95],
+    [80.45,6.00],[80.20,5.95],[79.95,5.95],[79.75,6.05],[79.55,6.20],[79.45,6.40],
+    [79.40,6.60],[79.50,6.80],[79.70,6.95],[79.85,7.15],[79.85,7.40],[79.80,7.65],
+    [79.75,7.90],[79.70,8.15],[79.65,8.40],[79.60,8.65],[79.55,8.90],[79.50,9.15],
+    [79.48,9.40],[79.50,9.60],[79.52,9.82]
+  ]]}};
+  L.geoJSON(LK_OUTLINE,{
+    style:function(){return {className:'lk-fill'}},
+    interactive:false
+  }).addTo(map);
+  L.geoJSON(LK_OUTLINE,{
+    style:function(){return {className:'lk-border',weight:1.8,opacity:0.8,fill:false,color:'#2aefc8'}},
+    interactive:false
+  }).addTo(map);
+
   var $=function(id){return document.getElementById(id)};
   var UW={kmh:{l:'km/h',f:1},ms:{l:'m/s',f:1/3.6},kn:{l:'kn',f:0.539957}},uw='kmh',ut='c';
   function Wf(k){return k*UW[uw].f}
@@ -676,6 +700,7 @@ body.dist #detail{display:none!important}
   var slider=$('slider'),when=$('when'),playBtn=$('play'),detail=$('detail');
   var times=[],D={u:[],v:[],t:[],r:[],p:[],w:[],wp:[],sw:[],st:[]},hour=0,ready=false,playing=false,timer=null,
       layer=/^(wind|temp|rain|pres|dist|wave|sst)$/.test(HS.layer)?HS.layer:'wind',sel=null,marker=null;
+  if(layer==='wave'||layer==='sst')fc.classList.add('sea-layer');
 
   function size(){
     canvas.width=innerWidth;canvas.height=innerHeight;
@@ -685,11 +710,12 @@ body.dist #detail{display:none!important}
 
   var SPEED=[[0,[59,130,246]],[10,[34,211,238]],[20,[74,222,128]],[30,[250,204,21]],[40,[251,146,60]],[50,[239,68,68]]];
   var FIELDS={
-    temp:{k:'t',name:'Temperature (°C)',labels:['22','27','32','37+'],stops:[[22,[59,130,246,210]],[25,[34,211,238,210]],[28,[74,222,128,210]],[31,[250,204,21,215]],[34,[251,146,60,225]],[37,[239,68,68,235]]]},
-    rain:{k:'r',name:'Rain (mm per hour)',labels:['0','1','3','15+'],stops:[[0,[0,0,0,0]],[0.1,[147,197,253,120]],[1,[59,130,246,190]],[3,[139,92,246,215]],[8,[217,70,239,230]],[15,[244,63,94,240]]]},
-    wave:{k:'w',sea:1,name:'Wave height (m)',labels:['0','1.3','2.7','4+'],stops:[[0,[96,165,250,70]],[0.5,[56,189,248,170]],[1,[34,211,238,200]],[1.5,[74,222,128,210]],[2.25,[250,204,21,220]],[3,[251,146,60,230]],[4,[239,68,68,240]]]},
-    sst:{k:'st',sea:1,name:'Sea temperature',labels:['26','28','30','32'],stops:[[26,[59,130,246,210]],[27.5,[34,211,238,210]],[29,[250,204,21,215]],[30,[251,146,60,225]],[31.5,[239,68,68,235]]]},
-    pres:{k:'p',name:'Sea-level pressure (hPa)',labels:['1002','1008','1014','1018+'],stops:[[1002,[139,92,246,210]],[1006,[59,130,246,210]],[1010,[74,222,128,210]],[1014,[250,204,21,210]],[1018,[251,146,60,220]]]}
+    temp:{k:'t',name:'Temperature (°C)',labels:['22','27','32','37+'],stops:[[22,[59,130,246,140]],[25,[34,211,238,145]],[28,[74,222,128,150]],[31,[250,204,21,155]],[34,[251,146,60,165]],[37,[239,68,68,175]]]},
+    rain:{k:'r',name:'Rain (mm per hour)',labels:['0','1','3','15+'],stops:[[0,[0,0,0,0]],[0.1,[147,197,253,70]],[1,[59,130,246,120]],[3,[139,92,246,145]],[8,[217,70,239,160]],[15,[244,63,94,175]]]},
+    /* Sea layers use lower alpha so coastline and labels stay visible */
+    wave:{k:'w',sea:1,name:'Wave height (m)',labels:['0','1.3','2.7','4+'],stops:[[0,[96,165,250,0]],[0.4,[56,189,248,55]],[0.9,[34,211,238,90]],[1.5,[74,222,128,110]],[2.2,[250,204,21,130]],[3,[251,146,60,145]],[4,[239,68,68,160]]]},
+    sst:{k:'st',sea:1,name:'Sea temperature',labels:['26','28','30','32'],stops:[[26,[59,130,246,90]],[27.5,[34,211,238,100]],[29,[250,204,21,110]],[30,[251,146,60,120]],[31.5,[239,68,68,135]]]},
+    pres:{k:'p',name:'Sea-level pressure (hPa)',labels:['1002','1008','1014','1018+'],stops:[[1002,[139,92,246,120]],[1006,[59,130,246,120]],[1010,[74,222,128,120]],[1014,[250,204,21,120]],[1018,[251,146,60,130]]]}
   };
   function ramp(st,v){
     if(v<=st[0][0])return st[0][1];
@@ -718,6 +744,7 @@ body.dist #detail{display:none!important}
     b.onclick=function(){
       layer=l[0];
       [].forEach.call($('layers').querySelectorAll('button'),function(x){x.setAttribute('aria-pressed',x===b)});
+      fc.classList.toggle('sea-layer',layer==='wave'||layer==='sst');
       legend();drawField();ctx.clearRect(0,0,canvas.width,canvas.height);setDist();stats();hours();saveHash();
     };
     $('layers').appendChild(b);
