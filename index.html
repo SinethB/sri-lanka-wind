@@ -4,126 +4,386 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Island Weather — Sri Lanka Forecast</title>
-<meta name="theme-color" content="#07111b">
+<meta name="theme-color" content="#060e16">
 <meta name="description" content="Explore Sri Lanka's weather through an interactive map, animated wind, hourly forecast and district rainfall intelligence.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Sans:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-
-:root{color-scheme:dark;--bg:#07111b;--panel:rgba(11,25,39,.91);--panel2:#0d1d2b;--line:rgba(164,194,211,.15);--text:#f2f7fb;--muted:#8ca4b5;--teal:#55e6cf;--blue:#5ba7ff;--shadow:0 22px 65px rgba(0,0,0,.38)}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:"Instrument Sans",Inter,system-ui,sans-serif}
+:root{
+  color-scheme:dark;
+  --bg:#060e16;
+  --panel:rgba(10,22,34,.88);
+  --panel-solid:#0c1926;
+  --panel2:#0e1f2e;
+  --line:rgba(148,180,200,.12);
+  --line-strong:rgba(148,180,200,.22);
+  --text:#eef5fa;
+  --muted:#7d97ab;
+  --muted2:#5c7588;
+  --teal:#3dd9c0;
+  --teal-dim:rgba(61,217,192,.14);
+  --teal-glow:rgba(61,217,192,.35);
+  --blue:#5b9dff;
+  --amber:#f5b942;
+  --rose:#f472b6;
+  --violet:#a78bfa;
+  --shadow:0 24px 64px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.03) inset;
+  --radius:16px;
+  --radius-sm:10px;
+  --font:"Inter",system-ui,-apple-system,sans-serif;
+  --display:"Instrument Sans",Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased}
 body{overflow:hidden}
-#map{position:absolute;inset:0;background:#0a1a27}
-.leaflet-tile-pane{filter:invert(1) hue-rotate(190deg) brightness(.62) saturate(.5) contrast(1.05)}
+#map{position:absolute;inset:0;background:#071420}
+.leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) brightness(.58) saturate(.45) contrast(1.08)}
 #field,#wind{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#field{z-index:440;opacity:.65}#wind{z-index:450}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
-.side{position:absolute;z-index:900;top:18px;left:76px;width:350px;max-height:calc(100% - 112px);overflow:auto;padding:22px;scrollbar-width:thin;scrollbar-color:#345365 transparent}
-.side:before{content:"WEATHER INTELLIGENCE  /  SRI LANKA";display:block;color:var(--teal);font-size:10px;letter-spacing:.18em;font-weight:700;margin-bottom:13px}
-h1{margin:0;font-size:1.18rem;font-weight:650;letter-spacing:-.035em}
-.side h1{font-size:1.8rem;letter-spacing:-.065em;line-height:1.05}
-.side h1:before{content:none}
-.side p{margin:9px 0 0;font-size:.82rem;color:var(--muted);line-height:1.55}
-.srch{display:flex;gap:8px;margin-top:19px}
-input[type=search]{flex:1;min-width:0;background:#081722;color:var(--text);border:1px solid var(--line);border-radius:11px;padding:12px 13px;font:inherit;font-size:.85rem}
-input[type=search]:focus{outline:1px solid var(--teal);border-color:var(--teal)}
-button,select{font:inherit;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
-button:hover{border-color:rgba(85,230,207,.7)!important}
-button:active{transform:scale(.98)}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
-#loc{background:var(--teal);color:#06211e;border:1px solid var(--teal);border-radius:11px;padding:0 14px;font-size:.82rem;font-weight:700}
-#res{font-size:.8rem;color:var(--muted);margin-top:5px;max-height:120px;overflow:auto}
-#res button{display:block;width:100%;text-align:left;background:#102435;color:var(--text);border:1px solid transparent;border-radius:9px;padding:9px 10px;margin-top:4px;font-size:.83rem}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:19px 0 21px}
-.stat{position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.018));border:1px solid rgba(164,194,211,.1);border-radius:13px;padding:13px 12px}
-.stat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--teal);opacity:.75}
-.stat b{display:block;font-size:1.25rem;font-weight:650;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
-.stat span{display:block;margin-top:5px;color:var(--muted);font-size:.7rem;line-height:1.4}
-.layers{display:flex;flex-wrap:wrap;gap:7px}
-.layers:before{content:"MAP OVERLAYS";width:100%;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.14em;margin:0 0 3px}
-.layers button,.tabs button{background:#0a1b29;color:#9bb0bd;border:1px solid var(--line);padding:8px 11px;border-radius:9px;font-size:.77rem}
-.layers button[aria-pressed=true],.tabs button[aria-pressed=true]{background:rgba(85,230,207,.12);color:var(--teal);border-color:rgba(85,230,207,.45);font-weight:650}
-.units{display:flex;gap:7px;margin-top:17px;flex-wrap:wrap}
-.units select,.units button{background:#0a1b29;color:#dce8ef;border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:.76rem}
+#field{z-index:440;opacity:.7}
+#wind{z-index:450}
+
+/* ── Panels ── */
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(28px) saturate(1.2);
+  -webkit-backdrop-filter:blur(28px) saturate(1.2);
+}
+.side{
+  position:absolute;z-index:900;top:16px;left:72px;
+  width:352px;max-height:calc(100% - 108px);overflow:auto;
+  padding:20px 20px 18px;
+  scrollbar-width:thin;scrollbar-color:#2a4558 transparent;
+}
+.side::-webkit-scrollbar{width:5px}
+.side::-webkit-scrollbar-thumb{background:#2a4558;border-radius:4px}
+
+.brand{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.brand-mark{
+  width:32px;height:32px;border-radius:9px;
+  background:linear-gradient(135deg,var(--teal),#2bb8a8);
+  display:grid;place-items:center;
+  box-shadow:0 4px 14px var(--teal-glow);
+  flex-shrink:0;
+}
+.brand-mark svg{width:18px;height:18px}
+.brand-label{font-size:10px;letter-spacing:.2em;font-weight:700;color:var(--teal);text-transform:uppercase}
+.brand-sub{font-size:11px;color:var(--muted2);margin-top:1px;letter-spacing:.02em}
+
+.side h1{
+  font-family:var(--display);font-size:1.72rem;font-weight:700;
+  letter-spacing:-.04em;line-height:1.1;margin:0 0 6px;
+}
+.side .lead{font-size:.8rem;color:var(--muted);line-height:1.5;margin-bottom:16px}
+
+/* Search */
+.srch{display:flex;gap:7px;margin-bottom:4px}
+input[type=search]{
+  flex:1;min-width:0;background:rgba(6,16,24,.7);color:var(--text);
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:11px 12px;font:inherit;font-size:.84rem;
+  transition:border-color .2s,box-shadow .2s;
+}
+input[type=search]::placeholder{color:var(--muted2)}
+input[type=search]:focus{
+  outline:none;border-color:rgba(61,217,192,.5);
+  box-shadow:0 0 0 3px rgba(61,217,192,.12);
+}
+button,select{font:inherit;cursor:pointer;transition:all .18s ease}
+button:active{transform:scale(.97)}
+button:focus-visible,input:focus-visible,select:focus-visible{
+  outline:2px solid var(--teal);outline-offset:2px;
+}
+#loc{
+  background:linear-gradient(135deg,var(--teal),#2ec4b0);
+  color:#041a17;border:none;border-radius:var(--radius-sm);
+  padding:0 14px;font-size:.8rem;font-weight:700;
+  box-shadow:0 2px 10px var(--teal-glow);
+}
+#loc:hover{filter:brightness(1.08)}
+#res{font-size:.78rem;color:var(--muted);margin-top:4px;max-height:110px;overflow:auto}
+#res button{
+  display:block;width:100%;text-align:left;
+  background:rgba(16,36,52,.8);color:var(--text);
+  border:1px solid transparent;border-radius:8px;
+  padding:8px 10px;margin-top:3px;font-size:.82rem;
+  transition:background .15s,border-color .15s;
+}
+#res button:hover{background:rgba(61,217,192,.1);border-color:rgba(61,217,192,.25)}
+
+/* Stats grid */
+.stats{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  margin:16px 0 18px;
+}
+.stat{
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015));
+  border:1px solid rgba(148,180,200,.1);
+  border-radius:12px;padding:12px 12px 11px;
+  transition:border-color .2s,transform .2s;
+}
+.stat:hover{border-color:rgba(61,217,192,.25);transform:translateY(-1px)}
+.stat-icon{
+  width:22px;height:22px;border-radius:6px;
+  display:grid;place-items:center;margin-bottom:8px;
+  font-size:11px;
+}
+.stat-icon svg{width:13px;height:13px}
+.stat b{
+  display:block;font-size:1.22rem;font-weight:700;
+  letter-spacing:-.03em;font-variant-numeric:tabular-nums;
+  line-height:1.15;
+}
+.stat span{
+  display:block;margin-top:3px;color:var(--muted);
+  font-size:.68rem;line-height:1.35;font-weight:500;
+}
+
+/* Layer buttons */
+.layers{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:2px}
+.sec-label{
+  width:100%;color:var(--muted2);font-size:9.5px;font-weight:700;
+  letter-spacing:.16em;text-transform:uppercase;margin:0 0 6px;
+}
+.layers button,.tabs button{
+  background:rgba(10,26,40,.9);color:var(--muted);
+  border:1px solid var(--line);padding:7px 11px;border-radius:8px;
+  font-size:.74rem;font-weight:500;
+  transition:all .18s;
+}
+.layers button:hover,.tabs button:hover{
+  border-color:rgba(61,217,192,.35);color:#c5dce8;
+}
+.layers button[aria-pressed=true],.tabs button[aria-pressed=true]{
+  background:var(--teal-dim);color:var(--teal);
+  border-color:rgba(61,217,192,.4);font-weight:600;
+  box-shadow:0 0 12px rgba(61,217,192,.08);
+}
+
+/* Units & share */
+.units{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap;align-items:center}
+.units select,.units button{
+  background:rgba(10,26,40,.9);color:#d0e0eb;
+  border:1px solid var(--line);border-radius:8px;
+  padding:8px 10px;font-size:.74rem;font-weight:500;
+}
+.units select:hover,.units button:hover{border-color:rgba(61,217,192,.3)}
 .units button{margin-left:auto}
 select option{background:#0b1d2a}
-.legend{margin-top:19px;padding-top:16px;border-top:1px solid var(--line);font-size:.75rem;color:var(--muted)}
-#legT{font-size:.78rem;color:#d6e4ed}
-.ramp{height:7px;border-radius:20px;margin:10px 0 7px;border:0}
-.lab{display:flex;justify-content:space-between;font-size:.68rem}
-.bar{position:absolute;z-index:900;left:50%;transform:translateX(-50%);bottom:20px;display:flex;gap:13px;align-items:center;padding:12px 15px;width:min(760px,calc(100% - 40px));border-radius:16px}
-#play{background:var(--teal);color:#06211e;border:1px solid var(--teal);border-radius:10px;padding:10px 17px;font-weight:700;min-width:78px}
-input[type=range]{flex:1;accent-color:var(--teal);min-width:80px;cursor:pointer}
-#when{min-width:145px;font-size:.8rem;text-align:right;font-variant-numeric:tabular-nums;color:#d9e7ef}
-.detail{position:absolute;z-index:900;top:18px;right:18px;width:360px;max-height:calc(100% - 112px);overflow:auto;padding:20px;display:none;scrollbar-width:thin;scrollbar-color:#345365 transparent}
-.detail.on{display:block}
-.dh{display:flex;justify-content:space-between;align-items:start;gap:8px}
-.dh button{background:#102435;color:var(--muted);border:1px solid var(--line);border-radius:9px;padding:6px 10px}
-.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:15px 0}
-.tiles div{background:#0b1d2b;border:1px solid rgba(164,194,211,.1);border-radius:12px;padding:12px;min-width:0}
-.tiles b{display:block;font-size:1.12rem;font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.tiles span{display:block;margin-top:4px;font-size:.71rem;color:var(--muted);line-height:1.4}
-.detail h2{font-size:.8rem;margin:19px 0 7px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:#d6e6ee}
-.detail ul{margin:7px 0;padding-left:18px;font-size:.83rem;line-height:1.65;color:#c4d5df}
-.detail li+li{margin-top:5px}
-svg text{fill:var(--muted);font-size:9px;font-family:inherit}
-.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#0b1d2b;color:var(--text);border:1px solid var(--line)}
-.leaflet-popup-content{margin:12px 14px;font-family:inherit;font-size:.85rem;line-height:1.55}
-.leaflet-control-zoom{border:1px solid var(--line)!important;border-radius:10px!important;overflow:hidden}
-.leaflet-control-zoom a{background:#0b1d2b!important;color:var(--text)!important;border-color:var(--line)!important}
-.leaflet-control-attribution{background:rgba(7,17,27,.72)!important;color:#9bb0bd!important}
-.leaflet-control-attribution a{color:var(--teal)!important}
-body.dist #detail{display:none!important}
-.dm{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.78rem;color:#fff;text-shadow:0 1px 2px #000;border:2px solid rgba(255,255,255,.85);box-shadow:0 5px 18px #0007}
-.tabs{display:flex;gap:6px;margin:13px 0;flex-wrap:wrap}
-.row{display:grid;grid-template-columns:108px 1fr 45px;gap:8px;align-items:center;padding:8px 0;cursor:pointer;font-size:.81rem;border-bottom:1px solid rgba(164,194,211,.08)}
-.row i{display:block;height:7px;border-radius:5px;background:linear-gradient(90deg,#4d9cff,#8b7bfa)}
-.row b{text-align:right;font-variant-numeric:tabular-nums}
-.row small,.note{display:block;color:var(--muted);font-size:.69rem;line-height:1.45}
-.row small.hi{color:#fb923c}
-.note{margin-top:11px}
-#msg{position:absolute;z-index:1000;top:50%;left:50%;transform:translate(-50%,-50%);padding:15px 20px;border-radius:13px;color:var(--text);font-size:.88rem}
-@media(max-width:900px){.side{left:62px;width:310px;padding:17px}.side h1{font-size:1.55rem}.detail{width:330px;right:12px}}
-@media(max-width:700px){
- body{overflow:hidden}
- .side{top:9px;left:52px;right:9px;width:auto;max-height:calc(100% - 100px);padding:13px;border-radius:15px}
- .side:before{font-size:8px;margin-bottom:8px}.side h1{font-size:1.35rem}.side p{font-size:.72rem;margin-top:5px}
- .srch{margin-top:10px}input[type=search]{padding:10px}
- .stats{grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 13px}.stat{padding:8px 9px}.stat b{font-size:.96rem}.stat span{font-size:.65rem}
- .layers{gap:5px}.layers button{padding:6px 8px;font-size:.69rem}
- .units{margin-top:10px;gap:5px}.units select,.units button{padding:7px;font-size:.7rem}.units button{margin-left:0}
- .legend{margin-top:12px;padding-top:10px}
- .detail{top:auto;bottom:82px;left:9px;right:9px;width:auto;max-height:42vh;padding:14px;border-radius:15px}
- .bar{bottom:max(9px,env(safe-area-inset-bottom));width:calc(100% - 18px);gap:8px;padding:8px 9px;border-radius:13px}
- #play{padding:9px 11px;min-width:62px}#when{min-width:94px;font-size:.71rem}
- #res{max-height:80px}
-}
-@media(max-width:390px){.side{left:48px;right:7px;padding:10px}.side h1{font-size:1.2rem}.units select,.units button{font-size:.66rem;padding:6px}.layers button{font-size:.65rem;padding:5px 6px}.stats{gap:5px}.bar{gap:6px}#when{min-width:80px}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
 
+/* Legend */
+.legend{
+  margin-top:16px;padding-top:14px;
+  border-top:1px solid var(--line);font-size:.74rem;color:var(--muted);
+}
+#legT{font-size:.76rem;color:#c8d9e6;font-weight:500}
+.ramp{
+  height:6px;border-radius:20px;margin:9px 0 6px;
+  box-shadow:0 1px 4px rgba(0,0,0,.25);
+}
+.lab{display:flex;justify-content:space-between;font-size:.66rem;color:var(--muted2)}
+
+/* Bottom bar */
+.bar{
+  position:absolute;z-index:900;left:50%;transform:translateX(-50%);
+  bottom:16px;display:flex;gap:12px;align-items:center;
+  padding:10px 14px;width:min(720px,calc(100% - 32px));
+  border-radius:14px;
+}
+#play{
+  background:linear-gradient(135deg,var(--teal),#2ec4b0);
+  color:#041a17;border:none;border-radius:9px;
+  padding:9px 16px;font-weight:700;min-width:76px;font-size:.82rem;
+  box-shadow:0 2px 10px var(--teal-glow);
+}
+#play:hover{filter:brightness(1.08)}
+input[type=range]{
+  flex:1;accent-color:var(--teal);min-width:70px;cursor:pointer;height:4px;
+}
+#when{
+  min-width:140px;font-size:.78rem;text-align:right;
+  font-variant-numeric:tabular-nums;color:#c8d9e6;font-weight:500;
+}
+
+/* Detail panel */
+.detail{
+  position:absolute;z-index:900;top:16px;right:16px;
+  width:368px;max-height:calc(100% - 108px);overflow:auto;
+  padding:18px;display:none;
+  scrollbar-width:thin;scrollbar-color:#2a4558 transparent;
+}
+.detail.on{display:block;animation:slideIn .25s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px}
+.dh h1{font-family:var(--display);font-size:1.2rem;font-weight:700;letter-spacing:-.03em}
+.dh .coords{font-size:.76rem;color:var(--muted);margin-top:2px}
+.dh button{
+  background:rgba(16,36,52,.9);color:var(--muted);
+  border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:.78rem;
+}
+.dh button:hover{border-color:rgba(61,217,192,.35);color:#c5dce8}
+.tiles{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:12px 0;
+}
+.tiles div{
+  background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.012));
+  border:1px solid rgba(148,180,200,.09);
+  border-radius:11px;padding:11px 11px 10px;min-width:0;
+}
+.tiles b{
+  display:block;font-size:1.1rem;font-weight:700;
+  letter-spacing:-.025em;font-variant-numeric:tabular-nums;
+}
+.tiles span{display:block;margin-top:3px;font-size:.68rem;color:var(--muted);line-height:1.35}
+.detail h2{
+  font-size:.72rem;margin:16px 0 6px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);
+}
+.detail ul{margin:6px 0;padding-left:16px;font-size:.8rem;line-height:1.6;color:#b0c5d4}
+.detail li+li{margin-top:4px}
+.note{display:block;color:var(--muted2);font-size:.68rem;line-height:1.4;margin-top:8px}
+svg text{fill:var(--muted2);font-size:9px;font-family:var(--font)}
+
+/* Leaflet overrides */
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{
+  background:var(--panel-solid);color:var(--text);border:1px solid var(--line);
+  box-shadow:var(--shadow);
+}
+.leaflet-popup-content{margin:11px 13px;font-family:var(--font);font-size:.83rem;line-height:1.5}
+.leaflet-control-zoom{border:1px solid var(--line)!important;border-radius:10px!important;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.3)!important}
+.leaflet-control-zoom a{background:var(--panel-solid)!important;color:var(--text)!important;border-color:var(--line)!important}
+.leaflet-control-attribution{background:rgba(6,14,22,.75)!important;color:var(--muted2)!important;font-size:10px!important}
+.leaflet-control-attribution a{color:var(--teal)!important}
+
+body.dist #detail{display:none!important}
+.dm{
+  width:36px;height:36px;border-radius:50%;
+  display:grid;place-items:center;font-weight:700;font-size:.76rem;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.8);
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+}
+.tabs{display:flex;gap:5px;margin:12px 0 10px;flex-wrap:wrap}
+.row{
+  display:grid;grid-template-columns:108px 1fr 42px;gap:8px;align-items:center;
+  padding:7px 0;cursor:pointer;font-size:.8rem;
+  border-bottom:1px solid rgba(148,180,200,.06);
+  transition:background .15s;
+}
+.row:hover{background:rgba(61,217,192,.04)}
+.row i{display:block;height:6px;border-radius:4px;background:linear-gradient(90deg,#4d9cff,#8b7bfa)}
+.row b{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.row small{display:block;color:var(--muted2);font-size:.66rem;line-height:1.35}
+.row small.hi{color:#fb923c}
+
+#msg{
+  position:absolute;z-index:1000;top:50%;left:50%;transform:translate(-50%,-50%);
+  padding:16px 24px;border-radius:14px;color:var(--text);font-size:.88rem;
+  background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);
+  backdrop-filter:blur(20px);
+}
+
+/* Chart container polish */
+.chart-wrap{
+  background:rgba(8,20,30,.5);border-radius:10px;padding:6px 4px 2px;
+  border:1px solid rgba(148,180,200,.06);margin-bottom:2px;
+}
+
+@media(max-width:900px){
+  .side{left:58px;width:310px;padding:16px}
+  .side h1{font-size:1.5rem}
+  .detail{width:330px;right:12px}
+}
+@media(max-width:700px){
+  body{overflow:hidden}
+  .side{
+    top:8px;left:48px;right:8px;width:auto;
+    max-height:calc(100% - 96px);padding:12px;border-radius:14px;
+  }
+  .side h1{font-size:1.3rem}
+  .lead{font-size:.72rem}
+  .stats{gap:6px;margin:10px 0 12px}
+  .stat{padding:9px}
+  .stat b{font-size:1rem}
+  .layers button{padding:6px 8px;font-size:.68rem}
+  .detail{
+    top:auto;bottom:78px;left:8px;right:8px;width:auto;
+    max-height:40vh;padding:13px;border-radius:14px;
+  }
+  .bar{bottom:max(8px,env(safe-area-inset-bottom));width:calc(100% - 16px);gap:8px;padding:8px 10px}
+  #play{padding:8px 12px;min-width:60px}
+  #when{min-width:90px;font-size:.7rem}
+}
+@media(max-width:390px){
+  .side{left:44px;right:6px;padding:10px}
+  .side h1{font-size:1.15rem}
+  .layers button{font-size:.64rem;padding:5px 6px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important}
+}
 </style>
 </head>
 <body>
-<div id="map"></div><canvas id="field"></canvas><canvas id="wind"></canvas>
+<div id="map"></div>
+<canvas id="field"></canvas>
+<canvas id="wind"></canvas>
+
 <section class="panel side">
-  <h1>Island Weather</h1><p>Interactive forecast intelligence for Sri Lanka.<br>Explore atmospheric conditions, coastlines and district rainfall.</p>
-  <div class="srch"><input id="q" type="search" placeholder="Search a town" aria-label="Search a town" autocomplete="off"><button type="button" id="loc" aria-label="Use my location" title="Use my location">Locate</button></div><div id="res"></div>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#041a17" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-1.5 4-4 6.5-7 8 3 1.5 5.5 4 7 8 1.5-4 4-6.5 7-8-3-1.5-5.5-4-7-8z"/></svg>
+    </div>
+    <div>
+      <div class="brand-label">Island Weather</div>
+      <div class="brand-sub">Sri Lanka · Live Forecast</div>
+    </div>
+  </div>
+  <h1>Weather Intelligence</h1>
+  <p class="lead">Atmospheric conditions, coastlines and district rainfall — powered by Open-Meteo.</p>
+
+  <div class="srch">
+    <input id="q" type="search" placeholder="Search a town…" aria-label="Search a town" autocomplete="off">
+    <button type="button" id="loc" aria-label="Use my location" title="Use my location">Locate</button>
+  </div>
+  <div id="res"></div>
+
   <div class="stats" id="stats"></div>
-  <div class="layers" id="layers" role="group" aria-label="Map layer"></div>
-  <div class="units"><select id="uw" aria-label="Wind unit"><option value="kmh">km/h</option><option value="ms">m/s</option><option value="kn">knots</option></select><select id="ut" aria-label="Temperature unit"><option value="c">°C</option><option value="f">°F</option></select><button type="button" id="share">Share link</button></div>
-  <div class="legend"><div id="legT"></div><div class="ramp" id="ramp"></div><div class="lab" id="legL"></div></div>
+
+  <div class="layers" id="layers" role="group" aria-label="Map layer">
+    <div class="sec-label">Map overlays</div>
+  </div>
+
+  <div class="units">
+    <select id="uw" aria-label="Wind unit"><option value="kmh">km/h</option><option value="ms">m/s</option><option value="kn">knots</option></select>
+    <select id="ut" aria-label="Temperature unit"><option value="c">°C</option><option value="f">°F</option></select>
+    <button type="button" id="share">Share link</button>
+  </div>
+
+  <div class="legend">
+    <div id="legT"></div>
+    <div class="ramp" id="ramp"></div>
+    <div class="lab" id="legL"></div>
+  </div>
 </section>
+
 <aside class="panel detail" id="detail" aria-live="polite"></aside>
 <aside class="panel detail" id="dist" aria-live="polite"></aside>
+
 <div class="panel bar">
   <button id="play" type="button">Play</button>
   <input id="slider" type="range" min="0" max="0" value="0" aria-label="Forecast hour">
   <div id="when">Loading…</div>
 </div>
+
 <div class="panel" id="msg">Loading forecast…</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 (function(){
@@ -131,10 +391,11 @@ body.dist #detail{display:none!important}
   var nLat=Math.round((LAT1-LAT0)/STEP)+1,nLon=Math.round((LON1-LON0)/STEP)+1,lats=[],lons=[];
   for(var i=0;i<nLat;i++)for(var j=0;j<nLon;j++){lats.push((LAT0+i*STEP).toFixed(2));lons.push((LON0+j*STEP).toFixed(2));}
 
-  var map=L.map('map',{minZoom:6,maxZoom:10,maxBounds:[[3,76],[12.5,85]]});
+  var map=L.map('map',{minZoom:6,maxZoom:10,maxBounds:[[3,76],[12.5,85]],zoomControl:true});
   var HS=parseHash();
-  if(HS.c&&HS.c.length===2&&!isNaN(HS.c[0])&&!isNaN(HS.c[1])&&+HS.z)map.setView(HS.c,+HS.z);else map.fitBounds([[5.7,79.4],[9.9,82.1]],{padding:[60,60]});
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+  if(HS.c&&HS.c.length===2&&!isNaN(HS.c[0])&&!isNaN(HS.c[1])&&+HS.z)map.setView(HS.c,+HS.z);
+  else map.fitBounds([[5.7,79.4],[9.9,82.1]],{padding:[60,60]});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
 
   var $=function(id){return document.getElementById(id)};
   var UW={kmh:{l:'km/h',f:1},ms:{l:'m/s',f:1/3.6},kn:{l:'kn',f:0.539957}},uw='kmh',ut='c';
@@ -143,11 +404,15 @@ body.dist #detail{display:none!important}
   function TU(){return ut==='f'?'°F':'°C'}
   var canvas=$('wind'),ctx=canvas.getContext('2d'),fc=$('field'),fx=fc.getContext('2d'),CELL=6;
   var slider=$('slider'),when=$('when'),playBtn=$('play'),detail=$('detail');
-  var times=[],D={u:[],v:[],t:[],r:[],p:[],w:[],wp:[],sw:[],st:[]},hour=0,ready=false,playing=false,timer=null,layer=/^(wind|temp|rain|pres|dist|wave|sst)$/.test(HS.layer)?HS.layer:'wind',sel=null,marker=null;
+  var times=[],D={u:[],v:[],t:[],r:[],p:[],w:[],wp:[],sw:[],st:[]},hour=0,ready=false,playing=false,timer=null,
+      layer=/^(wind|temp|rain|pres|dist|wave|sst)$/.test(HS.layer)?HS.layer:'wind',sel=null,marker=null;
 
-  function size(){canvas.width=innerWidth;canvas.height=innerHeight;fc.width=Math.ceil(innerWidth/CELL);fc.height=Math.ceil(innerHeight/CELL);ctx.clearRect(0,0,canvas.width,canvas.height);drawField();}
+  function size(){
+    canvas.width=innerWidth;canvas.height=innerHeight;
+    fc.width=Math.ceil(innerWidth/CELL);fc.height=Math.ceil(innerHeight/CELL);
+    ctx.clearRect(0,0,canvas.width,canvas.height);drawField();
+  }
 
-  // colour scales: [value,[r,g,b,a]]
   var SPEED=[[0,[59,130,246]],[10,[34,211,238]],[20,[74,222,128]],[30,[250,204,21]],[40,[251,146,60]],[50,[239,68,68]]];
   var FIELDS={
     temp:{k:'t',name:'Temperature (°C)',labels:['22','27','32','37+'],stops:[[22,[59,130,246,210]],[25,[34,211,238,210]],[28,[74,222,128,210]],[31,[250,204,21,215]],[34,[251,146,60,225]],[37,[239,68,68,235]]]},
@@ -158,26 +423,51 @@ body.dist #detail{display:none!important}
   };
   function ramp(st,v){
     if(v<=st[0][0])return st[0][1];
-    for(var i=0;i<st.length-1;i++)if(v<st[i+1][0]){var f=(v-st[i][0])/(st[i+1][0]-st[i][0]),a=st[i][1],b=st[i+1][1],o=[];for(var c=0;c<4;c++)o.push((a[c]==null?255:a[c])+((b[c]==null?255:b[c])-(a[c]==null?255:a[c]))*f);return o;}
+    for(var i=0;i<st.length-1;i++)if(v<st[i+1][0]){
+      var f=(v-st[i][0])/(st[i+1][0]-st[i][0]),a=st[i][1],b=st[i+1][1],o=[];
+      for(var c=0;c<4;c++)o.push((a[c]==null?255:a[c])+((b[c]==null?255:b[c])-(a[c]==null?255:a[c]))*f);
+      return o;
+    }
     return st[st.length-1][1];
   }
   function windColor(ms){var c=ramp(SPEED,ms*3.6);return 'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';}
 
-  // layer buttons + legend
-  [['wind','Wind'],['temp','Temperature'],['rain','Rain'],['pres','Pressure'],['wave','Waves'],['sst','Sea temp'],['dist','Districts']].forEach(function(l){
-    var b=document.createElement('button');b.type='button';b.textContent=l[1];b.setAttribute('aria-pressed',l[0]===layer);
-    b.onclick=function(){layer=l[0];[].forEach.call($('layers').children,function(x){x.setAttribute('aria-pressed',x===b)});legend();drawField();ctx.clearRect(0,0,canvas.width,canvas.height);setDist();stats();saveHash();};
+  /* Layer buttons */
+  var layerIcons={
+    wind:'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5h9a2 2 0 100-4H9M2 9h11a2.5 2.5 0 110 5H12M2 13h5"/></svg>',
+    temp:'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2v8.5a2.5 2.5 0 11-1.5-2.3"/><path d="M8 2a1.5 1.5 0 013 0v1"/></svg>',
+    rain:'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 9a4 4 0 118 0c0 2.5-2 4-4 5.5C6 13 4 11.5 4 9z"/><path d="M7 11.5v2M9 10.5v2"/></svg>',
+    pres:'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.5l2.5 1.5"/></svg>',
+    wave:'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 8c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/><path d="M1 11.5c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/></svg>',
+    sst:'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.5 3.5l1 1M11.5 11.5l1 1M3.5 12.5l1-1M11.5 4.5l1-1"/></svg>',
+    dist:'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 13V5l5-3 5 3v8"/><path d="M6 13V8h4v5"/></svg>'
+  };
+  [['wind','Wind'],['temp','Temp'],['rain','Rain'],['pres','Pressure'],['wave','Waves'],['sst','Sea temp'],['dist','Districts']].forEach(function(l){
+    var b=document.createElement('button');b.type='button';
+    b.innerHTML=(layerIcons[l[0]]||'')+' '+l[1];
+    b.setAttribute('aria-pressed',l[0]===layer);
+    b.onclick=function(){
+      layer=l[0];
+      [].forEach.call($('layers').querySelectorAll('button'),function(x){x.setAttribute('aria-pressed',x===b)});
+      legend();drawField();ctx.clearRect(0,0,canvas.width,canvas.height);setDist();stats();saveHash();
+    };
     $('layers').appendChild(b);
   });
+
   function legend(){
     var st=layer==='wind'?SPEED:layer==='dist'?DIST:FIELDS[layer].stops,lo=st[0][0],hi=st[st.length-1][0];
     $('legT').textContent=layer==='wind'?'Wind speed ('+UW[uw].l+')':layer==='temp'?'Temperature ('+TU()+')':layer==='sst'?'Sea temperature ('+TU()+')':layer==='dist'?'District rain, '+WIN[dWin].t+' (mm)':FIELDS[layer].name;
     if(FIELDS[layer]&&FIELDS[layer].sea&&!D.w.length)$('legT').textContent+=' – loading…';
-    $('ramp').style.background='linear-gradient(90deg,'+st.map(function(s){var c=s[1];return 'rgba('+c[0]+','+c[1]+','+c[2]+','+(c[3]==null?1:Math.max(c[3]/255,.35))+') '+((s[0]-lo)/(hi-lo)*100)+'%'}).join(',')+')';
-    $('legL').innerHTML=(layer==='wind'?[0,15,30,45].map(function(x,i){return Math.round(Wf(x))+(i==3?'+':'')}):layer==='temp'?[22,27,32,37].map(function(x,i){return Math.round(Tm(x))+(i==3?'+':'')}):layer==='sst'?[26,27.8,29.7,31.5].map(function(x,i){return Math.round(Tm(x))+(i==3?'+':'')}):layer==='dist'?[0,33,67,100].map(function(x,i){return Math.round(x*WIN[dWin].m)+(i==3?'+':'')}):FIELDS[layer].labels).map(function(x){return '<span>'+x+'</span>'}).join('');
+    $('ramp').style.background='linear-gradient(90deg,'+st.map(function(s){
+      var c=s[1];return 'rgba('+c[0]+','+c[1]+','+c[2]+','+(c[3]==null?1:Math.max(c[3]/255,.35))+') '+((s[0]-lo)/(hi-lo)*100)+'%';
+    }).join(',')+')';
+    $('legL').innerHTML=(layer==='wind'?[0,15,30,45].map(function(x,i){return Math.round(Wf(x))+(i==3?'+':'')}):
+      layer==='temp'?[22,27,32,37].map(function(x,i){return Math.round(Tm(x))+(i==3?'+':'')}):
+      layer==='sst'?[26,27.8,29.7,31.5].map(function(x,i){return Math.round(Tm(x))+(i==3?'+':'')}):
+      layer==='dist'?[0,33,67,100].map(function(x,i){return Math.round(x*WIN[dWin].m)+(i==3?'+':'')}):
+      FIELDS[layer].labels).map(function(x){return '<span>'+x+'</span>'}).join('');
   }
 
-  // grid sampling
   function wts(lat,lon){
     if(lat<LAT0||lat>LAT1||lon<LON0||lon>LON1)return null;
     var fi=(lat-LAT0)/STEP,fj=(lon-LON0)/STEP,i=Math.min(Math.floor(fi),nLat-2),j=Math.min(Math.floor(fj),nLon-2);
@@ -204,7 +494,8 @@ body.dist #detail{display:none!important}
     }
     var nowLocal=Date.now()+(arr[0].utc_offset_seconds||0)*1000;
     for(var q=0;q<times.length;q++)if(Date.parse(times[q]+'Z')<=nowLocal)hour=q;
-    if(HS.t&&times.indexOf(HS.t)>=0)hour=times.indexOf(HS.t);slider.max=times.length-1;slider.value=hour;ready=true;$('msg').remove();update();requestAnimationFrame(frame);
+    if(HS.t&&times.indexOf(HS.t)>=0)hour=times.indexOf(HS.t);
+    slider.max=times.length-1;slider.value=hour;ready=true;$('msg').remove();update();requestAnimationFrame(frame);
     if(layer==='dist')setDist();
     if(HS.p){var pp=HS.p.split(',').map(Number);if(pp.length===2)selectPoint(L.latLng(pp[0],pp[1]),'');}
   }).catch(function(e){$('msg').textContent='Could not load the forecast ('+e.message+'). Check your connection and reload.';});
@@ -212,69 +503,104 @@ body.dist #detail{display:none!important}
   function dayLabel(t){return new Date(times[t]).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});}
   function update(){when.textContent=dayLabel(hour);drawField();stats();if(sel)renderDetail();saveHash();}
 
+  /* Enhanced stats with icons */
+  var statIcons={
+    wind:'<div class="stat-icon" style="background:rgba(91,157,255,.15);color:#5b9dff"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 5h9a2 2 0 100-4H9M2 9h11a2.5 2.5 0 110 5H12"/></svg></div>',
+    temp:'<div class="stat-icon" style="background:rgba(251,146,60,.15);color:#fb923c"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2v8.5a2.5 2.5 0 11-1.5-2.3"/></svg></div>',
+    rain:'<div class="stat-icon" style="background:rgba(96,165,250,.15);color:#60a5fa"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9a4 4 0 118 0c0 2.5-2 4-4 5.5C6 13 4 11.5 4 9z"/></svg></div>',
+    pres:'<div class="stat-icon" style="background:rgba(167,139,250,.15);color:#a78bfa"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="5"/><path d="M8 5v3l2 1.2"/></svg></div>',
+    wave:'<div class="stat-icon" style="background:rgba(56,189,248,.15);color:#38bdf8"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 8c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/></svg></div>',
+    period:'<div class="stat-icon" style="background:rgba(74,222,128,.15);color:#4ade80"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.5l2.5 1.5"/></svg></div>',
+    warm:'<div class="stat-icon" style="background:rgba(251,146,60,.15);color:#fb923c"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14"/></svg></div>',
+    cool:'<div class="stat-icon" style="background:rgba(96,165,250,.15);color:#60a5fa"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M5 6l3-3 3 3"/></svg></div>'
+  };
+
   function stats(){
     if(!ready)return;
     if((layer==='wave'||layer==='sst')&&D.w.length){
       var mw2=0,pS=0,pN=0,hi=-99,lo2=99,a=D.w[hour],b=D.wp[hour],c=D.st[hour];
-      for(var q=0;q<a.length;q++){if(a[q]===a[q])mw2=Math.max(mw2,a[q]);if(b[q]===b[q]){pS+=b[q];pN++;}if(c[q]===c[q]){hi=Math.max(hi,c[q]);lo2=Math.min(lo2,c[q]);}}
-      $('stats').innerHTML=[[mw2.toFixed(1)+' m','Highest waves'],[pN?(pS/pN).toFixed(0)+' s':'–','Average wave period'],[hi>-99?Tm(hi).toFixed(1)+' '+TU():'–','Warmest sea'],[lo2<99?Tm(lo2).toFixed(1)+' '+TU():'–','Coolest sea']]
-        .map(function(x){return '<div class="stat"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join('');
+      for(var q=0;q<a.length;q++){
+        if(a[q]===a[q])mw2=Math.max(mw2,a[q]);
+        if(b[q]===b[q]){pS+=b[q];pN++;}
+        if(c[q]===c[q]){hi=Math.max(hi,c[q]);lo2=Math.min(lo2,c[q]);}
+      }
+      $('stats').innerHTML=[
+        [statIcons.wave,mw2.toFixed(1)+' m','Highest waves'],
+        [statIcons.period,pN?(pS/pN).toFixed(0)+' s':'–','Avg wave period'],
+        [statIcons.warm,hi>-99?Tm(hi).toFixed(1)+' '+TU():'–','Warmest sea'],
+        [statIcons.cool,lo2<99?Tm(lo2).toFixed(1)+' '+TU():'–','Coolest sea']
+      ].map(function(x){return '<div class="stat">'+x[0]+'<b>'+x[1]+'</b><span>'+x[2]+'</span></div>'}).join('');
       return;
     }
     var n=D.u[hour].length,mw=0,at=0,mr=0,ap=0;
-    for(var k=0;k<n;k++){mw=Math.max(mw,Math.hypot(D.u[hour][k],D.v[hour][k])*3.6);at+=D.t[hour][k];mr=Math.max(mr,D.r[hour][k]);ap+=D.p[hour][k];}
-    $('stats').innerHTML=[[Wf(mw).toFixed(0)+' '+UW[uw].l,'Strongest wind'],[Tm(at/n).toFixed(1)+' '+TU(),'Average temperature'],[mr.toFixed(1)+' mm/h','Heaviest rain'],[(ap/n).toFixed(0)+' hPa','Average pressure']]
-      .map(function(s){return '<div class="stat"><b>'+s[0]+'</b><span>'+s[1]+'</span></div>'}).join('');
+    for(var k=0;k<n;k++){
+      mw=Math.max(mw,Math.hypot(D.u[hour][k],D.v[hour][k])*3.6);
+      at+=D.t[hour][k];mr=Math.max(mr,D.r[hour][k]);ap+=D.p[hour][k];
+    }
+    $('stats').innerHTML=[
+      [statIcons.wind,Wf(mw).toFixed(0)+' '+UW[uw].l,'Strongest wind'],
+      [statIcons.temp,Tm(at/n).toFixed(1)+' '+TU(),'Average temp'],
+      [statIcons.rain,mr.toFixed(1)+' mm/h','Heaviest rain'],
+      [statIcons.pres,(ap/n).toFixed(0)+' hPa','Avg pressure']
+    ].map(function(s){return '<div class="stat">'+s[0]+'<b>'+s[1]+'</b><span>'+s[2]+'</span></div>'}).join('');
   }
 
-  // colour field (temperature, rain, pressure)
   var pend=false;
   function drawField(){
-    if(pend)return;pend=true;requestAnimationFrame(function(){
-      pend=false;fx.clearRect(0,0,fc.width,fc.height);if(!ready||layer==='wind'||layer==='dist')return;
-      var F=FIELDS[layer],a=D[F.k][hour];if(!a)return;var W=fc.width,H=fc.height,img=fx.createImageData(W,H),lo=[],la=[];
+    if(pend)return;pend=true;
+    requestAnimationFrame(function(){
+      pend=false;fx.clearRect(0,0,fc.width,fc.height);
+      if(!ready||layer==='wind'||layer==='dist')return;
+      var F=FIELDS[layer],a=D[F.k][hour];if(!a)return;
+      var W=fc.width,H=fc.height,img=fx.createImageData(W,H),lo=[],la=[];
       for(var c=0;c<W;c++)lo.push(map.containerPointToLatLng([c*CELL+CELL/2,0]).lng);
       for(var r=0;r<H;r++)la.push(map.containerPointToLatLng([0,r*CELL+CELL/2]).lat);
       for(r=0;r<H;r++)for(c=0;c<W;c++){
         var w=wts(la[r],lo[c]);if(!w)continue;
-        var vv=F.sea?sval(a,w):val(a,w);if(vv!==vv)continue;var col=ramp(F.stops,vv),o=(r*W+c)*4;img.data[o]=col[0];img.data[o+1]=col[1];img.data[o+2]=col[2];img.data[o+3]=col[3];
+        var vv=F.sea?sval(a,w):val(a,w);if(vv!==vv)continue;
+        var col=ramp(F.stops,vv),o=(r*W+c)*4;
+        img.data[o]=col[0];img.data[o+1]=col[1];img.data[o+2]=col[2];img.data[o+3]=col[3];
       }
       fx.putImageData(img,0,0);
     });
   }
   map.on('move zoomend resize',drawField);addEventListener('resize',size);size();
 
-  // wind particles
-  var N=matchMedia('(max-width:700px)').matches?900:1800,P=[];
+  /* Wind particles – slightly denser & smoother fade */
+  var N=matchMedia('(max-width:700px)').matches?1000:2000,P=[];
   function spawn(p){
-    var b=map.getBounds(),s=Math.max(LAT0,b.getSouth()),n=Math.min(LAT1,b.getNorth()),w=Math.max(LON0,b.getWest()),e=Math.min(LON1,b.getEast());
+    var b=map.getBounds(),s=Math.max(LAT0,b.getSouth()),n=Math.min(LAT1,b.getNorth()),
+        w=Math.max(LON0,b.getWest()),e=Math.min(LON1,b.getEast());
     p.lat=s+Math.random()*(n-s);p.lon=w+Math.random()*(e-w);p.age=Math.floor(Math.random()*80);return p;
   }
   for(var i2=0;i2<N;i2++)P.push(spawn({}));
   map.on('movestart zoomstart',function(){ctx.clearRect(0,0,canvas.width,canvas.height);});
   map.on('moveend zoomend',function(){for(var i=0;i<N;i++)spawn(P[i]);ctx.clearRect(0,0,canvas.width,canvas.height);});
   function frame(){
-    ctx.globalCompositeOperation='destination-out';ctx.fillStyle='rgba(0,0,0,0.07)';ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.globalCompositeOperation='source-over';ctx.lineWidth=1.3;
+    ctx.globalCompositeOperation='destination-out';
+    ctx.fillStyle='rgba(0,0,0,0.065)';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.globalCompositeOperation='source-over';ctx.lineWidth=1.4;ctx.lineCap='round';
     var ppd=256*Math.pow(2,map.getZoom())/360;
     for(var i=0;i<N;i++){
       var p=P[i],w=wts(p.lat,p.lon);
-      if(!w||p.age++>90){spawn(p);p.age=0;continue;}
-      var u=val(D.u[hour],w),v=val(D.v[hour],w),sp=Math.hypot(u,v),a=map.latLngToContainerPoint([p.lat,p.lon]);
-      p.lon+=u*0.35/ppd/Math.cos(p.lat*Math.PI/180);p.lat+=v*0.35/ppd;
+      if(!w||p.age++>95){spawn(p);p.age=0;continue;}
+      var u=val(D.u[hour],w),v=val(D.v[hour],w),sp=Math.hypot(u,v);
+      var a=map.latLngToContainerPoint([p.lat,p.lon]);
+      p.lon+=u*0.38/ppd/Math.cos(p.lat*Math.PI/180);p.lat+=v*0.38/ppd;
       var b=map.latLngToContainerPoint([p.lat,p.lon]);
-      ctx.strokeStyle=layer==='wind'?windColor(sp):'rgba(255,255,255,.7)';
+      ctx.strokeStyle=layer==='wind'?windColor(sp):'rgba(255,255,255,.65)';
       ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     }
     requestAnimationFrame(frame);
   }
 
-  // district rainfall
+  /* District rainfall */
   var DIST=[[0,[96,165,250,150]],[20,[96,165,250,200]],[40,[59,130,246,225]],[60,[139,92,246,235]],[80,[217,70,239,240]],[100,[244,63,94,245]]];
   var WIN={p24:{t:'past 24 h',l:'Past 24 h',m:1,d:1},n24:{t:'next 24 h',l:'Next 24 h',m:1,d:1},n72:{t:'next 72 h',l:'Next 72 h',m:2,d:3}};
   var DN=[['Ampara',7.30,81.67],['Anuradhapura',8.34,80.41],['Badulla',6.99,81.06],['Batticaloa',7.71,81.70],['Colombo',6.93,79.86],['Galle',6.05,80.22],['Gampaha',7.09,80.00],['Hambantota',6.12,81.12],['Jaffna',9.66,80.01],['Kalutara',6.58,79.96],['Kandy',7.29,80.63],['Kegalle',7.25,80.35],['Kilinochchi',9.39,80.40],['Kurunegala',7.49,80.37],['Mannar',8.98,79.91],['Matale',7.47,80.62],['Matara',5.95,80.55],['Monaragala',6.87,81.35],['Mullaitivu',9.27,80.81],['Nuwara Eliya',6.97,80.77],['Polonnaruwa',7.94,81.00],['Puttalam',8.03,79.84],['Ratnapura',6.68,80.40],['Trincomalee',8.57,81.23],['Vavuniya',8.75,80.50]];
   var dWin='n24',dData=null,clim=null,dLayer=L.layerGroup(),mk={};
   legend();
+
   fetch('https://api.open-meteo.com/v1/forecast?latitude='+DN.map(function(d){return d[1]}).join(',')+'&longitude='+DN.map(function(d){return d[2]}).join(',')+'&hourly=precipitation&past_days=2&forecast_days=4&timezone=Asia%2FColombo')
     .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(data){
       var arr=Array.isArray(data)?data:[data],tm=arr[0].hourly.time,now=Date.now()+(arr[0].utc_offset_seconds||0)*1000,idx=0;
@@ -283,6 +609,7 @@ body.dist #detail{display:none!important}
       dData=arr.map(function(o,k){var h=o.hourly.precipitation;return {n:DN[k][0],lat:DN[k][1],lon:DN[k][2],p24:sum(h,idx-23,idx),n24:sum(h,idx+1,idx+24),n72:sum(h,idx+1,idx+72)};});
       renderDist();
     }).catch(function(e){if(layer==='dist')$('dist').textContent='Could not load district rainfall ('+e.message+').';});
+
   fetch('climatology.json').then(function(r){return r.ok?r.json():null}).then(function(j){clim=j;renderDist();}).catch(function(){});
 
   fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+lats.join(',')+'&longitude='+lons.join(',')+'&hourly=wave_height,wave_period,swell_wave_height,sea_surface_temperature&forecast_days=3&timezone=Asia%2FColombo')
@@ -313,27 +640,28 @@ body.dist #detail{display:none!important}
     var W=WIN[dWin],rows=dData.slice().sort(function(a,b){return b[dWin]-a[dWin]}),max=Math.max(1,rows[0][dWin]);
     dLayer.clearLayers();mk={};
     rows.forEach(function(d){
-      var v=d[dWin],c=ramp(DIST,v/W.m),m=L.marker([d.lat,d.lon],{icon:L.divIcon({className:'',iconSize:[34,34],html:'<div class="dm" style="background:rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+Math.max(.6,c[3]/255)+')">'+Math.round(v)+'</div>'})});
+      var v=d[dWin],c=ramp(DIST,v/W.m);
+      var m=L.marker([d.lat,d.lon],{icon:L.divIcon({className:'',iconSize:[36,36],html:'<div class="dm" style="background:rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+Math.max(.6,c[3]/255)+')">'+Math.round(v)+'</div>'})});
       m.bindPopup('<strong>'+d.n+'</strong><br>Past 24 h: '+d.p24.toFixed(1)+' mm<br>Next 24 h: '+d.n24.toFixed(1)+' mm<br>Next 72 h: '+d.n72.toFixed(1)+' mm'+usual(d,v).replace(/small/g,'span'));
       m.addTo(dLayer);mk[d.n]=m;
     });
-    el.innerHTML='<h1>District rainfall</h1><div class="tabs">'+Object.keys(WIN).map(function(k){return '<button type="button" data-w="'+k+'" aria-pressed="'+(k===dWin)+'">'+WIN[k].l+'</button>'}).join('')+'</div>'+
+    el.innerHTML='<div class="dh"><div><h1>District rainfall</h1></div></div>'+
+      '<div class="tabs">'+Object.keys(WIN).map(function(k){return '<button type="button" data-w="'+k+'" aria-pressed="'+(k===dWin)+'">'+WIN[k].l+'</button>'}).join('')+'</div>'+
       rows.map(function(d){return '<div class="row" data-n="'+d.n+'"><span>'+d.n+usual(d,d[dWin])+'</span><i style="width:'+Math.max(2,d[dWin]/max*100)+'%"></i><b>'+d[dWin].toFixed(d[dWin]<10?1:0)+'</b></div>'}).join('')+
-      '<span class="note">Millimetres per district centre, from the Open-Meteo model. '+(clim?'"Usual" is the '+clim.period+' average.':'Add climatology.json to see how this compares with normal.')+' For official warnings see the Department of Meteorology.</span>';
+      '<span class="note">Millimetres at district centres (Open-Meteo model). '+(clim?'"Usual" is the '+clim.period+' average.':'')+' Official warnings: Department of Meteorology.</span>';
     [].forEach.call(el.querySelectorAll('[data-w]'),function(b){b.onclick=function(){dWin=b.getAttribute('data-w');legend();renderDist();};});
     [].forEach.call(el.querySelectorAll('.row'),function(r){r.onclick=function(){var d=dData.filter(function(x){return x.n===r.getAttribute('data-n')})[0];map.flyTo([d.lat,d.lon],8);mk[d.n].openPopup();};});
   }
 
-  // time controls
+  /* Time controls */
   slider.addEventListener('input',function(){hour=+slider.value;update();});
   playBtn.addEventListener('click',function(){
     playing=!playing;playBtn.textContent=playing?'Pause':'Play';clearInterval(timer);
     if(playing)timer=setInterval(function(){hour=(hour+1)%times.length;slider.value=hour;update();},700);
   });
 
-  // point forecast
-  var compass=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'],place='',ptCache={};
-  var mCache={};
+  /* Point forecast */
+  var compass=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'],place='',ptCache={},mCache={};
   function seaState(h){return h<1.25?'Slight':h<2.5?'Moderate':h<4?'Rough':'Very rough';}
   function tile(a,b){return '<div><b>'+a+'</b><span>'+b+'</span></div>';}
   function nz(x){return x==null?0:x;}
@@ -349,12 +677,13 @@ body.dist #detail{display:none!important}
   function keyOf(ll){return ll.lat.toFixed(2)+','+ll.lng.toFixed(2);}
   function esc(x){return String(x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]});}
   function uvc(u){return u>=11?'extreme':u>=8?'very high':u>=6?'high':u>=3?'moderate':'low';}
+
   map.on('click',function(e){if(layer==='dist'||!ready)return;selectPoint(e.latlng,'');});
   function selectPoint(ll,name){
     if(!ready||!wts(ll.lat,ll.lng))return false;
-    if(layer==='dist')$('layers').children[0].click();
+    if(layer==='dist')$('layers').querySelector('button').click();
     sel=ll;place=name||'';
-    if(!marker)marker=L.circleMarker(sel,{radius:6,color:'#fff',weight:2,fillColor:'#4fd1c5',fillOpacity:1}).addTo(map);
+    if(!marker)marker=L.circleMarker(sel,{radius:7,color:'#fff',weight:2.5,fillColor:'#3dd9c0',fillOpacity:1}).addTo(map);
     marker.setLatLng(sel);
     var key=keyOf(sel);
     if(!(key in ptCache)){
@@ -373,56 +702,102 @@ body.dist #detail{display:none!important}
     }
     renderDetail();saveHash();return true;
   }
+
   function chart(v,o){
-    var W=316,H=96,pl=30,pr=6,pt=8,pb=16,n=v.length,lo=o.lo!=null?o.lo:Math.min.apply(null,v),hi=o.hi!=null?o.hi:Math.max.apply(null,v);
+    var W=320,H=100,pl=32,pr=8,pt=10,pb=18,n=v.length,
+        lo=o.lo!=null?o.lo:Math.min.apply(null,v),hi=o.hi!=null?o.hi:Math.max.apply(null,v);
     if(hi-lo<1)hi=lo+1;
     var X=function(i){return pl+i*(W-pl-pr)/(n-1)},Y=function(x){return H-pb-(x-lo)/(hi-lo)*(H-pb-pt)};
-    var s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="'+o.label+'">';
-    [lo,hi].forEach(function(g){s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(g)+'" y2="'+Y(g)+'" stroke="#24465a"/><text x="'+(pl-4)+'" y="'+(Y(g)+3)+'" text-anchor="end">'+g.toFixed(o.d||0)+'</text>';});
-    for(var i=0;i<n;i++)if(times[i].slice(11)==='00:00')s+='<line x1="'+X(i)+'" x2="'+X(i)+'" y1="'+pt+'" y2="'+(H-pb)+'" stroke="#24465a" stroke-dasharray="2 3"/><text x="'+(X(i)+3)+'" y="'+(H-4)+'">'+new Date(times[i]).toLocaleDateString('en-GB',{weekday:'short'})+'</text>';
-    if(o.bar){var bw=(W-pl-pr)/n;for(i=0;i<n;i++)s+='<rect x="'+(X(i)-bw/2)+'" y="'+Y(v[i])+'" width="'+Math.max(bw-.6,.8)+'" height="'+(Y(lo)-Y(v[i]))+'" fill="'+o.c+'"/>';}
-    else{var pts=[];for(i=0;i<n;i++)pts.push(X(i).toFixed(1)+','+Y(v[i]).toFixed(1));s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+o.c+'" stroke-width="2"/>';}
-    return s+'<line x1="'+X(hour)+'" x2="'+X(hour)+'" y1="'+pt+'" y2="'+(H-pb)+'" stroke="#fff" stroke-width="1.2"/></svg>';
+    var s='<div class="chart-wrap"><svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="'+o.label+'">';
+    /* grid */
+    [lo,(lo+hi)/2,hi].forEach(function(g){
+      s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(g)+'" y2="'+Y(g)+'" stroke="#1a3344" stroke-width="1"/>';
+      s+='<text x="'+(pl-5)+'" y="'+(Y(g)+3)+'" text-anchor="end">'+g.toFixed(o.d||0)+'</text>';
+    });
+    for(var i=0;i<n;i++)if(times[i].slice(11)==='00:00'){
+      s+='<line x1="'+X(i)+'" x2="'+X(i)+'" y1="'+pt+'" y2="'+(H-pb)+'" stroke="#1a3344" stroke-dasharray="3 3"/>';
+      s+='<text x="'+(X(i)+3)+'" y="'+(H-5)+'">'+new Date(times[i]).toLocaleDateString('en-GB',{weekday:'short'})+'</text>';
+    }
+    if(o.bar){
+      var bw=(W-pl-pr)/n;
+      for(i=0;i<n;i++)s+='<rect x="'+(X(i)-bw/2)+'" y="'+Y(v[i])+'" width="'+Math.max(bw-.8,1)+'" height="'+(Y(lo)-Y(v[i]))+'" rx="1.5" fill="'+o.c+'" opacity=".85"/>';
+    }else{
+      /* area fill */
+      var pts=[];
+      for(i=0;i<n;i++)pts.push(X(i).toFixed(1)+','+Y(v[i]).toFixed(1));
+      s+='<polygon points="'+X(0)+','+Y(lo)+' '+pts.join(' ')+' '+X(n-1)+','+Y(lo)+'" fill="'+o.c+'" opacity=".12"/>';
+      s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+o.c+'" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+    }
+    /* current hour marker */
+    s+='<line x1="'+X(hour)+'" x2="'+X(hour)+'" y1="'+pt+'" y2="'+(H-pb)+'" stroke="#fff" stroke-width="1.4" opacity=".7"/>';
+    s+='<circle cx="'+X(hour)+'" cy="'+Y(v[hour])+'" r="3.5" fill="#fff" stroke="'+o.c+'" stroke-width="2"/>';
+    return s+'</svg></div>';
   }
+
   function renderDetail(){
-    var mc=mCache[keyOf(sel)],M=(mc&&mc!=='wait')?mc.hourly:null,pd=ptCache[keyOf(sel)],X=(pd&&pd!=='wait')?pd:null,E=X?X.hourly:null,n=times.length,S={s:[],t:[],r:[],p:[],d:[]},t,w,uu,vv;
-    if(E){for(t=0;t<n;t++){S.t.push(E.temperature_2m[t]);S.s.push(E.wind_speed_10m[t]*3.6);S.r.push(Math.max(0,E.precipitation[t]||0));S.p.push(E.pressure_msl[t]);S.d.push(E.wind_direction_10m[t]);}}
-    else{w=wts(sel.lat,sel.lng);for(t=0;t<n;t++){uu=val(D.u[t],w);vv=val(D.v[t],w);S.s.push(Math.hypot(uu,vv)*3.6);S.d.push((Math.atan2(-uu,-vv)*180/Math.PI+360)%360);S.t.push(val(D.t[t],w));S.r.push(Math.max(0,val(D.r[t],w)));S.p.push(val(D.p[t],w));}}
+    var mc=mCache[keyOf(sel)],M=(mc&&mc!=='wait')?mc.hourly:null,
+        pd=ptCache[keyOf(sel)],X=(pd&&pd!=='wait')?pd:null,E=X?X.hourly:null,
+        n=times.length,S={s:[],t:[],r:[],p:[],d:[]},t,w,uu,vv;
+    if(E){
+      for(t=0;t<n;t++){S.t.push(E.temperature_2m[t]);S.s.push(E.wind_speed_10m[t]*3.6);S.r.push(Math.max(0,E.precipitation[t]||0));S.p.push(E.pressure_msl[t]);S.d.push(E.wind_direction_10m[t]);}
+    }else{
+      w=wts(sel.lat,sel.lng);
+      for(t=0;t<n;t++){
+        uu=val(D.u[t],w);vv=val(D.v[t],w);
+        S.s.push(Math.hypot(uu,vv)*3.6);S.d.push((Math.atan2(-uu,-vv)*180/Math.PI+360)%360);
+        S.t.push(val(D.t[t],w));S.r.push(Math.max(0,val(D.r[t],w)));S.p.push(val(D.p[t],w));
+      }
+    }
     var end=Math.min(hour+23,n-1),pk=hour,wet=hour,rs=0,tmin=99,tmax=-99,cp=hour,cmax=0;
-    for(t=hour;t<=end;t++){if(S.s[t]>S.s[pk])pk=t;if(S.r[t]>S.r[wet])wet=t;rs+=S.r[t];tmin=Math.min(tmin,S.t[t]);tmax=Math.max(tmax,S.t[t]);if(E&&(E.cape[t]||0)>cmax){cmax=E.cape[t];cp=t;}}
-    var dp=S.p[end]-S.p[hour],dir=S.d[hour],storm=cmax>=2000?'High':cmax>=1000?'Moderate':'Low',day=Math.min(2,Math.floor(hour/24)),tl=function(a,b){return '<div><b>'+a+'</b><span>'+b+'</span></div>'};
+    for(t=hour;t<=end;t++){
+      if(S.s[t]>S.s[pk])pk=t;if(S.r[t]>S.r[wet])wet=t;rs+=S.r[t];
+      tmin=Math.min(tmin,S.t[t]);tmax=Math.max(tmax,S.t[t]);
+      if(E&&(E.cape[t]||0)>cmax){cmax=E.cape[t];cp=t;}
+    }
+    var dp=S.p[end]-S.p[hour],dir=S.d[hour],storm=cmax>=2000?'High':cmax>=1000?'Moderate':'Low',day=Math.min(2,Math.floor(hour/24));
     var feels=E?' · feels '+Tm(E.apparent_temperature[hour]).toFixed(0)+'°':'';
     detail.className='panel detail on';
-    detail.innerHTML='<div class="dh"><div><h1>'+esc(place||'Point forecast')+'</h1><p style="margin:2px 0 0;font-size:.8rem;color:var(--mute)">'+sel.lat.toFixed(2)+'°N, '+sel.lng.toFixed(2)+'°E · '+dayLabel(hour)+'</p></div><div><button type="button" id="sh2">Share</button> <button type="button" id="x" aria-label="Close">×</button></div></div>'+
-      '<div class="tiles">'+tl(Tm(S.t[hour]).toFixed(0)+'°','Temp '+TU()+feels)+tl(Wf(S.s[hour]).toFixed(0)+' '+compass[Math.round(dir/22.5)%16],'Wind '+UW[uw].l)+tl(S.r[hour].toFixed(1),'Rain mm/h')+tl(S.p[hour].toFixed(0),'Pressure hPa')+'</div>'+
-      (E?'<div class="tiles">'+tl(Math.round(E.relative_humidity_2m[hour])+'%','Humidity')+tl(Math.round(E.uv_index[hour]||0),'UV · '+uvc(E.uv_index[hour]||0))+tl(Math.round(E.cloud_cover[hour])+'%','Cloud cover')+tl(storm,'Storm potential')+'</div><span class="note" style="margin:0 0 6px">Sunrise '+X.daily.sunrise[day].slice(11,16)+' · Sunset '+X.daily.sunset[day].slice(11,16)+'</span>'
-        :'<span class="note">'+(pd==='wait'?'Loading humidity, UV and storm data…':'Showing the grid estimate; exact-point data is unavailable.')+'</span>')+
-      (M?marineTiles(M):'')+'<h2>Next 24 hours</h2><ul><li>Temperature between '+Tm(tmin).toFixed(0)+' and '+Tm(tmax).toFixed(0)+' '+TU()+'.</li><li>Wind peaks at '+Wf(S.s[pk]).toFixed(0)+' '+UW[uw].l+' around '+dayLabel(pk)+'.</li><li>'+
+    detail.innerHTML='<div class="dh"><div><h1>'+esc(place||'Point forecast')+'</h1><p class="coords">'+sel.lat.toFixed(2)+'°N, '+sel.lng.toFixed(2)+'°E · '+dayLabel(hour)+'</p></div><div style="display:flex;gap:5px"><button type="button" id="sh2">Share</button><button type="button" id="x" aria-label="Close">×</button></div></div>'+
+      '<div class="tiles">'+tile(Tm(S.t[hour]).toFixed(0)+'°','Temp '+TU()+feels)+tile(Wf(S.s[hour]).toFixed(0)+' '+compass[Math.round(dir/22.5)%16],'Wind '+UW[uw].l)+tile(S.r[hour].toFixed(1),'Rain mm/h')+tile(S.p[hour].toFixed(0),'Pressure hPa')+'</div>'+
+      (E?'<div class="tiles">'+tile(Math.round(E.relative_humidity_2m[hour])+'%','Humidity')+tile(Math.round(E.uv_index[hour]||0),'UV · '+uvc(E.uv_index[hour]||0))+tile(Math.round(E.cloud_cover[hour])+'%','Cloud cover')+tile(storm,'Storm potential')+'</div><span class="note" style="margin:0 0 4px">Sunrise '+X.daily.sunrise[day].slice(11,16)+' · Sunset '+X.daily.sunset[day].slice(11,16)+'</span>'
+        :'<span class="note">'+(pd==='wait'?'Loading humidity, UV and storm data…':'Showing grid estimate; exact-point data unavailable.')+'</span>')+
+      (M?marineTiles(M):'')+
+      '<h2>Next 24 hours</h2><ul><li>Temperature between '+Tm(tmin).toFixed(0)+' and '+Tm(tmax).toFixed(0)+' '+TU()+'.</li><li>Wind peaks at '+Wf(S.s[pk]).toFixed(0)+' '+UW[uw].l+' around '+dayLabel(pk)+'.</li><li>'+
       (rs<0.2?'Little or no rain expected.':'About '+rs.toFixed(1)+' mm of rain, heaviest around '+dayLabel(wet)+'.')+'</li><li>Pressure is '+(dp<-1?'falling':dp>1?'rising':'steady')+' ('+(dp>0?'+':'')+dp.toFixed(1)+' hPa).</li>'+
-      (E?'<li>Thunderstorm potential: '+storm+(cmax>=1000?', peaking around '+dayLabel(cp):'')+'. This reflects atmospheric instability, not a lightning forecast.</li>':'')+(M?marineLi(M):'')+'</ul>'+
-      '<h2>Temperature ('+TU()+')</h2>'+chart(S.t.map(Tm),{c:'#fb923c',label:'Temperature forecast'})+
-      '<h2>Rain (mm per hour)</h2>'+chart(S.r,{c:'#60a5fa',bar:true,lo:0,hi:Math.max(2,Math.max.apply(null,S.r)),d:1,label:'Rain forecast'})+
-      '<h2>Wind speed ('+UW[uw].l+')</h2>'+chart(S.s.map(Wf),{c:'#4fd1c5',lo:0,label:'Wind forecast'})+(M?'<h2>Wave height (m)</h2>'+chart(M.wave_height.map(nz),{c:'#38bdf8',lo:0,hi:Math.max(1,Math.max.apply(null,M.wave_height.map(nz))),d:1,label:'Wave height forecast'}):'');
+      (E?'<li>Thunderstorm potential: '+storm+(cmax>=1000?', peaking around '+dayLabel(cp):'')+'. Reflects instability, not a lightning forecast.</li>':'')+(M?marineLi(M):'')+'</ul>'+
+      '<h2>Temperature ('+TU()+')</h2>'+chart(S.t.map(Tm),{c:'#fb923c',label:'Temperature'})+
+      '<h2>Rain (mm/h)</h2>'+chart(S.r,{c:'#60a5fa',bar:true,lo:0,hi:Math.max(2,Math.max.apply(null,S.r)),d:1,label:'Rain'})+
+      '<h2>Wind speed ('+UW[uw].l+')</h2>'+chart(S.s.map(Wf),{c:'#3dd9c0',lo:0,label:'Wind'})+
+      (M?'<h2>Wave height (m)</h2>'+chart(M.wave_height.map(nz),{c:'#38bdf8',lo:0,hi:Math.max(1,Math.max.apply(null,M.wave_height.map(nz))),d:1,label:'Waves'}):'');
     $('x').onclick=function(){sel=null;detail.className='panel detail';if(marker){marker.remove();marker=null;}saveHash();};
     $('sh2').onclick=function(){shareLink(this);};
   }
 
-  // search, location, units, share links
+  /* Search, location, units, share */
   var qt;
   $('q').addEventListener('input',function(){
     clearTimeout(qt);var v=this.value.trim(),res=$('res');
     if(v.length<2){res.textContent='';return;}
     qt=setTimeout(function(){
-      fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(v)+'&count=6&language=en&countryCode=LK').then(function(r){return r.json();}).then(function(j){
-        var rs=j.results||[];res.textContent=rs.length?'':'No match in Sri Lanka.';
-        rs.forEach(function(r){var b=document.createElement('button');b.type='button';b.textContent=r.name+(r.admin1?', '+r.admin1:'');
-          b.onclick=function(){res.textContent='';var ll=L.latLng(r.latitude,r.longitude);if(selectPoint(ll,r.name))map.flyTo(ll,9);else res.textContent='That place is outside the forecast area.';};res.appendChild(b);});
-      }).catch(function(){res.textContent='Search is unavailable right now.';});
+      fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(v)+'&count=6&language=en&countryCode=LK')
+        .then(function(r){return r.json();}).then(function(j){
+          var rs=j.results||[];res.textContent=rs.length?'':'No match in Sri Lanka.';
+          rs.forEach(function(r){
+            var b=document.createElement('button');b.type='button';
+            b.textContent=r.name+(r.admin1?', '+r.admin1:'');
+            b.onclick=function(){res.textContent='';var ll=L.latLng(r.latitude,r.longitude);if(selectPoint(ll,r.name))map.flyTo(ll,9);else res.textContent='Outside forecast area.';};
+            res.appendChild(b);
+          });
+        }).catch(function(){res.textContent='Search unavailable.';});
     },300);
   });
   $('loc').onclick=function(){
-    var res=$('res');if(!navigator.geolocation){res.textContent='Location is not supported in this browser.';return;}
-    navigator.geolocation.getCurrentPosition(function(p){var ll=L.latLng(p.coords.latitude,p.coords.longitude);if(selectPoint(ll,'Your location'))map.flyTo(ll,9);else res.textContent='Your location is outside the forecast area.';},function(){res.textContent='Location permission was denied.';});
+    var res=$('res');
+    if(!navigator.geolocation){res.textContent='Location not supported.';return;}
+    navigator.geolocation.getCurrentPosition(
+      function(p){var ll=L.latLng(p.coords.latitude,p.coords.longitude);if(selectPoint(ll,'Your location'))map.flyTo(ll,9);else res.textContent='Outside forecast area.';},
+      function(){res.textContent='Location permission denied.';}
+    );
   };
   function refreshUnits(){legend();if(ready){stats();if(sel)renderDetail();}}
   $('uw').onchange=function(){uw=this.value;refreshUnits();};
@@ -440,7 +815,8 @@ body.dist #detail{display:none!important}
   function shareLink(btn){
     saveHash();var u=location.href,o=btn.textContent;
     function done(){btn.textContent='Copied';setTimeout(function(){btn.textContent=o;},1500);}
-    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(u).then(done,function(){prompt('Copy this link',u);});else prompt('Copy this link',u);
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(u).then(done,function(){prompt('Copy this link',u);});
+    else prompt('Copy this link',u);
   }
   $('share').onclick=function(){shareLink(this);};
   map.on('moveend',saveHash);
