@@ -93,7 +93,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 (function(){
-  var LAT0=5.5,LAT1=10.0,LON0=79.0,LON1=82.5,STEP=0.5;
+  var LAT0=4.5,LAT1=11.0,LON0=78.0,LON1=83.5,STEP=0.5;
   var nLat=Math.round((LAT1-LAT0)/STEP)+1,nLon=Math.round((LON1-LON0)/STEP)+1,lats=[],lons=[];
   for(var i=0;i<nLat;i++)for(var j=0;j<nLon;j++){lats.push((LAT0+i*STEP).toFixed(2));lons.push((LON0+j*STEP).toFixed(2));}
 
