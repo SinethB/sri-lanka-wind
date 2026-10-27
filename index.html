@@ -38,20 +38,16 @@
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased}
 body{overflow:hidden}
 #map{position:absolute;inset:0;background:#050e16}
-/* Softer invert so coastlines, roads and labels stay readable */
-.leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) brightness(.74) saturate(.58) contrast(1.02)}
+.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.52) saturate(.4) contrast(1.12)}
 #field,#wind{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#field{z-index:440;opacity:.48}
-#field.sea-layer{opacity:.36}
+#field{z-index:440;opacity:.74}
 #wind{z-index:450}
-.lk-border{stroke:#2aefc8;stroke-width:1.8;stroke-opacity:.8;fill:none;pointer-events:none}
-.lk-fill{fill:rgba(42,239,200,.035);stroke:none;pointer-events:none}
 
 body::after{
   content:"";position:fixed;inset:0;pointer-events:none;z-index:500;
   background:
-    radial-gradient(ellipse 90% 80% at 50% 40%,transparent 45%,rgba(4,10,16,.4) 100%),
-    linear-gradient(180deg,rgba(4,10,16,.1) 0%,transparent 10%,transparent 90%,rgba(4,10,16,.18) 100%);
+    radial-gradient(ellipse 85% 75% at 50% 35%,transparent 35%,rgba(4,10,16,.6) 100%),
+    linear-gradient(180deg,rgba(4,10,16,.15) 0%,transparent 12%,transparent 88%,rgba(4,10,16,.25) 100%);
 }
 
 .panel{
@@ -67,7 +63,6 @@ body::after{
   width:368px;max-height:calc(100% - 96px);overflow:auto;
   padding:16px 16px 14px;
   scrollbar-width:thin;scrollbar-color:#1e3244 transparent;
-  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
 }
 .side::-webkit-scrollbar{width:4px}
 .side::-webkit-scrollbar-thumb{background:#1e3244;border-radius:4px}
@@ -252,7 +247,6 @@ input[type=range]{flex:1;accent-color:var(--teal);min-width:55px;cursor:pointer;
   width:392px;max-height:calc(100% - 96px);overflow:auto;
   padding:0;display:none;
   scrollbar-width:thin;scrollbar-color:#1e3244 transparent;
-  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
 }
 .detail.on{display:block;animation:slideIn .22s ease}
 @keyframes slideIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
@@ -408,194 +402,37 @@ body.dist #detail{display:none!important}
   backdrop-filter:blur(24px);
 }
 
-/* Drag handle for mobile bottom sheets */
-.sheet-handle{
-  display:none;width:36px;height:4px;border-radius:2px;
-  background:rgba(148,180,200,.25);margin:8px auto 0;
-}
-
 @media(max-width:900px){
   .side{left:52px;width:325px;padding:14px}
   .side h1{font-size:1.4rem}
   .detail{width:360px;right:10px}
 }
-
-/* ── Tablet / large phone landscape ── */
 @media(max-width:700px){
   body{overflow:hidden}
-  .leaflet-control-zoom{display:none!important}
-
-  /* Side panel: compact top card */
-  .side{
-    top:max(6px,env(safe-area-inset-top));
-    left:8px;right:8px;width:auto;
-    max-height:min(42vh,calc(100% - 100px));
-    padding:12px;
-    border-radius:16px;
-    transition:opacity .2s,transform .2s,max-height .25s;
-  }
-  body.pf-open .side,
-  body.dist .side{
-    opacity:0;pointer-events:none;transform:translateY(-8px);
-  }
-  .side h1{font-size:1.25rem}
-  .lead{font-size:.7rem;margin-bottom:10px}
-  .brand{margin-bottom:8px}
-  .brand-mark{width:30px;height:30px;border-radius:9px}
-  .live{margin-bottom:6px}
-  .stats{gap:6px;margin:10px 0 10px}
-  .stat{padding:9px}
-  .stat b{font-size:1.05rem}
-  .stat span{font-size:.62rem}
-  .stat-spark{width:40px;height:14px}
-  .rose-row{padding:8px 10px;margin-bottom:10px;gap:8px}
-  .rose-svg{width:42px;height:42px}
-  .rose-meta b{font-size:.88rem}
-  .rose-meta span{font-size:.62rem}
-  .hour-strip{margin-bottom:10px;gap:3px}
-  .hour-chip{min-width:40px;padding:5px 3px;border-radius:8px}
-  .hour-chip .hv{font-size:.74rem}
-  .layers{gap:4px}
-  .layers button{padding:7px 9px;font-size:.68rem;min-height:32px}
-  .units{margin-top:10px;gap:5px}
-  .units select,.units button{padding:8px 9px;font-size:.7rem;min-height:34px}
-  .legend{margin-top:10px;padding-top:10px}
-  .srch{gap:6px}
-  input[type=search]{padding:10px 11px;font-size:16px} /* prevents iOS zoom */
-  #loc{padding:0 12px;min-height:40px;font-size:.78rem}
-
-  /* Point forecast + district: bottom sheet */
-  .detail{
-    top:auto;
-    bottom:calc(58px + env(safe-area-inset-bottom,0px));
-    left:0;right:0;width:auto;
-    max-height:min(62vh,calc(100% - 70px));
-    border-radius:18px 18px 0 0;
-    border-bottom:none;
-    box-shadow:0 -12px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
-    animation:sheetUp .28s ease;
-  }
-  .detail.on{animation:sheetUp .28s ease}
-  @keyframes sheetUp{
-    from{opacity:0;transform:translateY(24px)}
-    to{opacity:1;transform:none}
-  }
-  .sheet-handle{display:block}
-  .dh{
-    padding:4px 14px 12px;
-    position:sticky;top:0;z-index:2;
-    background:linear-gradient(180deg,rgba(7,16,26,.98),rgba(7,16,26,.94));
-    backdrop-filter:blur(12px);
-  }
-  .dh h1{font-size:1.08rem}
-  .dh .coords{font-size:.7rem}
-  .dh button{min-height:36px;padding:6px 12px;font-size:.76rem}
-  .dh button#x{min-width:36px;font-size:1.1rem}
-  .detail-body{padding:4px 14px 20px}
-
-  /* Hero scales for mobile */
-  .pf-hero{
-    grid-template-columns:1fr auto;
-    padding:12px;margin-bottom:12px;gap:10px;border-radius:13px;
-  }
-  .pf-hero-temp{font-size:2.35rem}
-  .pf-hero-feels{font-size:.7rem}
-  .pf-hero-wind{font-size:1rem}
-  .pf-hero-dir,.pf-hero-rain{font-size:.68rem}
-
-  /* Tiles: comfortable touch density */
-  .tiles{gap:7px;margin-bottom:12px}
-  .tile{padding:11px 10px 10px;border-radius:12px}
-  .tile-val{font-size:1.08rem}
-  .tile-label{font-size:.64rem}
-  .tile-icon{width:24px;height:24px}
-
-  .sun-row{padding:10px 11px;margin-bottom:12px;border-radius:12px}
-  .sun-time{font-size:.9rem}
-  .sun-icon{width:30px;height:30px}
-
-  .pf-summary{margin-bottom:12px;border-radius:12px}
-  .pf-summary li{padding:10px 12px;font-size:.78rem}
-
-  .marine-block{padding:11px;margin:10px 0;border-radius:12px}
-  .detail h2{margin:12px 0 6px;font-size:.64rem}
-
-  .chart-wrap{border-radius:10px;padding:4px 2px 1px}
-
-  /* Timeline bar */
-  .bar{
-    bottom:max(6px,env(safe-area-inset-bottom));
-    left:8px;right:8px;width:auto;transform:none;
-    gap:8px;padding:8px 10px;border-radius:14px;
-  }
-  #play{padding:9px 14px;min-width:64px;min-height:40px;font-size:.8rem;border-radius:10px}
-  #when{min-width:78px;font-size:.7rem}
-  input[type=range]{height:6px;min-width:40px}
-
-  /* District list rows */
-  .row{padding:8px 0;font-size:.8rem;grid-template-columns:min(38%,110px) 1fr 40px}
-  .tabs button{padding:7px 10px;font-size:.7rem;min-height:34px}
-}
-
-/* ── Small phones ── */
-@media(max-width:430px){
-  .side{
-    max-height:min(38vh,calc(100% - 96px));
-    padding:10px;
-  }
-  .side h1{font-size:1.12rem}
-  .lead{display:none}
-  .brand-sub{font-size:10px}
-  .stats{grid-template-columns:1fr 1fr;gap:5px;margin:8px 0}
+  .side{top:6px;left:44px;right:6px;width:auto;max-height:calc(100% - 86px);padding:10px;border-radius:14px}
+  .side h1{font-size:1.2rem}
+  .lead{font-size:.68rem}
+  .stats{gap:5px;margin:8px 0 10px}
   .stat{padding:8px}
-  .stat b{font-size:.98rem}
-  .stat-top{margin-bottom:4px}
-  .rose-meta span{display:none}
-  .layers button{padding:6px 7px;font-size:.64rem}
-  .units select,.units button{padding:7px 8px;font-size:.66rem}
-
-  .detail{max-height:min(68vh,calc(100% - 64px))}
-  .pf-hero{padding:11px;gap:8px}
-  .pf-hero-temp{font-size:2.15rem}
-  .tiles{grid-template-columns:1fr 1fr;gap:6px}
-  .tile{padding:10px 9px 9px}
-  .tile-val{font-size:1.02rem}
-  .detail-body{padding:2px 12px 18px}
-  .dh{padding:2px 12px 10px}
-  .bar{padding:7px 9px}
-  #play{padding:8px 12px;min-width:58px;min-height:38px}
-  #when{min-width:70px;font-size:.66rem}
+  .stat b{font-size:1rem}
+  .rose-row{padding:8px;margin-bottom:10px}
+  .rose-svg{width:44px;height:44px}
+  .layers button{padding:5px 7px;font-size:.64rem}
+  .detail{top:auto;bottom:68px;left:6px;right:6px;width:auto;max-height:38vh;border-radius:14px}
+  .detail-body{padding:10px 12px 12px}
+  .dh{padding:12px 12px 10px}
+  .pf-hero-temp{font-size:2.1rem}
+  .pf-hero{padding:11px;margin-bottom:10px}
+  .bar{bottom:max(6px,env(safe-area-inset-bottom));width:calc(100% - 12px);gap:6px;padding:7px 8px}
+  #play{padding:7px 10px;min-width:54px}
+  #when{min-width:80px;font-size:.66rem}
+  .hour-strip{margin-bottom:10px}
 }
-
-/* ── Very small ── */
-@media(max-width:360px){
-  .side{padding:8px;left:6px;right:6px}
-  .side h1{font-size:1.02rem}
-  .stats{gap:4px}
-  .stat b{font-size:.9rem}
-  .layers button{font-size:.6rem;padding:5px 6px}
-  .pf-hero-temp{font-size:1.95rem}
-  .tile-val{font-size:.95rem}
-  .hour-chip{min-width:36px}
+@media(max-width:390px){
+  .side{left:40px;right:4px;padding:8px}
+  .side h1{font-size:1.05rem}
+  .layers button{font-size:.6rem;padding:4px 5px}
 }
-
-/* Landscape phones: keep map usable */
-@media(max-height:480px) and (orientation:landscape){
-  .side{
-    top:6px;left:6px;right:auto;width:min(300px,46vw);
-    max-height:calc(100% - 70px);
-  }
-  body.pf-open .side,body.dist .side{opacity:0;pointer-events:none}
-  .detail{
-    top:6px;bottom:6px;left:auto;right:6px;
-    width:min(340px,50vw);max-height:none;
-    border-radius:14px;
-  }
-  .sheet-handle{display:none}
-  .bar{width:min(420px,55vw);left:50%;transform:translateX(-50%)}
-  .lead,.rose-meta span{display:none}
-}
-
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{transition:none!important;animation:none!important}
 }
@@ -671,26 +508,6 @@ body.dist #detail{display:none!important}
   else map.fitBounds([[5.7,79.4],[9.9,82.1]],{padding:[60,60]});
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
 
-  /* Simplified Sri Lanka coastline outline for clear border visibility */
-  var LK_OUTLINE={type:'Feature',geometry:{type:'Polygon',coordinates:[[
-    [79.52,9.82],[79.70,9.82],[80.05,9.85],[80.25,9.75],[80.45,9.65],[80.70,9.55],
-    [81.00,9.35],[81.20,9.20],[81.45,9.05],[81.70,8.85],[81.85,8.60],[81.90,8.35],
-    [81.85,8.10],[81.80,7.85],[81.75,7.55],[81.80,7.30],[81.85,7.00],[81.80,6.70],
-    [81.70,6.45],[81.55,6.25],[81.40,6.10],[81.20,5.95],[80.95,5.90],[80.70,5.95],
-    [80.45,6.00],[80.20,5.95],[79.95,5.95],[79.75,6.05],[79.55,6.20],[79.45,6.40],
-    [79.40,6.60],[79.50,6.80],[79.70,6.95],[79.85,7.15],[79.85,7.40],[79.80,7.65],
-    [79.75,7.90],[79.70,8.15],[79.65,8.40],[79.60,8.65],[79.55,8.90],[79.50,9.15],
-    [79.48,9.40],[79.50,9.60],[79.52,9.82]
-  ]]}};
-  L.geoJSON(LK_OUTLINE,{
-    style:function(){return {className:'lk-fill'}},
-    interactive:false
-  }).addTo(map);
-  L.geoJSON(LK_OUTLINE,{
-    style:function(){return {className:'lk-border',weight:1.8,opacity:0.8,fill:false,color:'#2aefc8'}},
-    interactive:false
-  }).addTo(map);
-
   var $=function(id){return document.getElementById(id)};
   var UW={kmh:{l:'km/h',f:1},ms:{l:'m/s',f:1/3.6},kn:{l:'kn',f:0.539957}},uw='kmh',ut='c';
   function Wf(k){return k*UW[uw].f}
@@ -700,7 +517,6 @@ body.dist #detail{display:none!important}
   var slider=$('slider'),when=$('when'),playBtn=$('play'),detail=$('detail');
   var times=[],D={u:[],v:[],t:[],r:[],p:[],w:[],wp:[],sw:[],st:[]},hour=0,ready=false,playing=false,timer=null,
       layer=/^(wind|temp|rain|pres|dist|wave|sst)$/.test(HS.layer)?HS.layer:'wind',sel=null,marker=null;
-  if(layer==='wave'||layer==='sst')fc.classList.add('sea-layer');
 
   function size(){
     canvas.width=innerWidth;canvas.height=innerHeight;
@@ -710,12 +526,11 @@ body.dist #detail{display:none!important}
 
   var SPEED=[[0,[59,130,246]],[10,[34,211,238]],[20,[74,222,128]],[30,[250,204,21]],[40,[251,146,60]],[50,[239,68,68]]];
   var FIELDS={
-    temp:{k:'t',name:'Temperature (°C)',labels:['22','27','32','37+'],stops:[[22,[59,130,246,140]],[25,[34,211,238,145]],[28,[74,222,128,150]],[31,[250,204,21,155]],[34,[251,146,60,165]],[37,[239,68,68,175]]]},
-    rain:{k:'r',name:'Rain (mm per hour)',labels:['0','1','3','15+'],stops:[[0,[0,0,0,0]],[0.1,[147,197,253,70]],[1,[59,130,246,120]],[3,[139,92,246,145]],[8,[217,70,239,160]],[15,[244,63,94,175]]]},
-    /* Sea layers use lower alpha so coastline and labels stay visible */
-    wave:{k:'w',sea:1,name:'Wave height (m)',labels:['0','1.3','2.7','4+'],stops:[[0,[96,165,250,0]],[0.4,[56,189,248,55]],[0.9,[34,211,238,90]],[1.5,[74,222,128,110]],[2.2,[250,204,21,130]],[3,[251,146,60,145]],[4,[239,68,68,160]]]},
-    sst:{k:'st',sea:1,name:'Sea temperature',labels:['26','28','30','32'],stops:[[26,[59,130,246,90]],[27.5,[34,211,238,100]],[29,[250,204,21,110]],[30,[251,146,60,120]],[31.5,[239,68,68,135]]]},
-    pres:{k:'p',name:'Sea-level pressure (hPa)',labels:['1002','1008','1014','1018+'],stops:[[1002,[139,92,246,120]],[1006,[59,130,246,120]],[1010,[74,222,128,120]],[1014,[250,204,21,120]],[1018,[251,146,60,130]]]}
+    temp:{k:'t',name:'Temperature (°C)',labels:['22','27','32','37+'],stops:[[22,[59,130,246,210]],[25,[34,211,238,210]],[28,[74,222,128,210]],[31,[250,204,21,215]],[34,[251,146,60,225]],[37,[239,68,68,235]]]},
+    rain:{k:'r',name:'Rain (mm per hour)',labels:['0','1','3','15+'],stops:[[0,[0,0,0,0]],[0.1,[147,197,253,120]],[1,[59,130,246,190]],[3,[139,92,246,215]],[8,[217,70,239,230]],[15,[244,63,94,240]]]},
+    wave:{k:'w',sea:1,name:'Wave height (m)',labels:['0','1.3','2.7','4+'],stops:[[0,[96,165,250,70]],[0.5,[56,189,248,170]],[1,[34,211,238,200]],[1.5,[74,222,128,210]],[2.25,[250,204,21,220]],[3,[251,146,60,230]],[4,[239,68,68,240]]]},
+    sst:{k:'st',sea:1,name:'Sea temperature',labels:['26','28','30','32'],stops:[[26,[59,130,246,210]],[27.5,[34,211,238,210]],[29,[250,204,21,215]],[30,[251,146,60,225]],[31.5,[239,68,68,235]]]},
+    pres:{k:'p',name:'Sea-level pressure (hPa)',labels:['1002','1008','1014','1018+'],stops:[[1002,[139,92,246,210]],[1006,[59,130,246,210]],[1010,[74,222,128,210]],[1014,[250,204,21,210]],[1018,[251,146,60,220]]]}
   };
   function ramp(st,v){
     if(v<=st[0][0])return st[0][1];
@@ -744,7 +559,6 @@ body.dist #detail{display:none!important}
     b.onclick=function(){
       layer=l[0];
       [].forEach.call($('layers').querySelectorAll('button'),function(x){x.setAttribute('aria-pressed',x===b)});
-      fc.classList.toggle('sea-layer',layer==='wave'||layer==='sst');
       legend();drawField();ctx.clearRect(0,0,canvas.width,canvas.height);setDist();stats();hours();saveHash();
     };
     $('layers').appendChild(b);
@@ -1027,17 +841,11 @@ body.dist #detail{display:none!important}
   }
   function setDist(){
     var on=layer==='dist';document.body.classList.toggle('dist',on);
-    if(on){
-      document.body.classList.remove('pf-open');
-      if(sel){sel=null;if(marker){marker.remove();marker=null;}$('detail').className='panel detail';}
-      dLayer.addTo(map);renderDist();
-    }else{
-      map.removeLayer(dLayer);$('dist').className='panel detail';
-    }
+    if(on){dLayer.addTo(map);renderDist();}else{map.removeLayer(dLayer);$('dist').className='panel detail';}
   }
   function renderDist(){
     if(layer!=='dist')return;var el=$('dist');el.className='panel detail on';
-    if(!dData){el.innerHTML='<div class="sheet-handle"></div><div class="detail-body" style="padding-top:12px">Loading district rainfall…</div>';return;}
+    if(!dData){el.textContent='Loading district rainfall…';return;}
     var W=WIN[dWin],rows=dData.slice().sort(function(a,b){return b[dWin]-a[dWin]}),max=Math.max(1,rows[0][dWin]);
     dLayer.clearLayers();mk={};
     rows.forEach(function(d){
@@ -1046,13 +854,10 @@ body.dist #detail{display:none!important}
       m.bindPopup('<strong>'+d.n+'</strong><br>Past 24 h: '+d.p24.toFixed(1)+' mm<br>Next 24 h: '+d.n24.toFixed(1)+' mm<br>Next 72 h: '+d.n72.toFixed(1)+' mm'+usual(d,v).replace(/small/g,'span'));
       m.addTo(dLayer);mk[d.n]=m;
     });
-    el.innerHTML='<div class="sheet-handle" aria-hidden="true"></div>'+
-      '<div class="dh"><div><h1>District rainfall</h1></div></div>'+
-      '<div class="detail-body">'+
+    el.innerHTML='<div class="dh"><div><h1>District rainfall</h1></div></div>'+
       '<div class="tabs">'+Object.keys(WIN).map(function(k){return '<button type="button" data-w="'+k+'" aria-pressed="'+(k===dWin)+'">'+WIN[k].l+'</button>'}).join('')+'</div>'+
       rows.map(function(d){return '<div class="row" data-n="'+d.n+'"><span>'+d.n+usual(d,d[dWin])+'</span><i style="width:'+Math.max(2,d[dWin]/max*100)+'%"></i><b>'+d[dWin].toFixed(d[dWin]<10?1:0)+'</b></div>'}).join('')+
-      '<span class="note">mm at district centres · Open-Meteo'+(clim?' · usual = '+clim.period+' avg':'')+' · Official: Dept. of Meteorology</span>'+
-      '</div>';
+      '<span class="note">mm at district centres · Open-Meteo'+(clim?' · usual = '+clim.period+' avg':'')+' · Official: Dept. of Meteorology</span>';
     [].forEach.call(el.querySelectorAll('[data-w]'),function(b){b.onclick=function(){dWin=b.getAttribute('data-w');legend();renderDist();};});
     [].forEach.call(el.querySelectorAll('.row'),function(r){r.onclick=function(){var d=dData.filter(function(x){return x.n===r.getAttribute('data-n')})[0];map.flyTo([d.lat,d.lon],8);mk[d.n].openPopup();};});
   }
@@ -1203,9 +1008,7 @@ body.dist #detail{display:none!important}
     if(M)summaryItems.push(sumIcon('rgba(56,189,248,.15)','#38bdf8','<path d="M1 8c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/>')+marineLi(M));
 
     detail.className='panel detail on';
-    document.body.classList.add('pf-open');
     detail.innerHTML=
-      '<div class="sheet-handle" aria-hidden="true"></div>'+
       '<div class="dh"><div><h1>'+esc(place||'Point forecast')+'</h1>'+
         '<p class="coords"><span>'+sel.lat.toFixed(2)+'°N, '+sel.lng.toFixed(2)+'°E</span><span class="dot"></span><span>'+dayLabel(hour)+'</span></p></div>'+
         '<div class="btns"><button type="button" id="sh2">Share</button><button type="button" id="x" aria-label="Close">×</button></div></div>'+
@@ -1246,12 +1049,7 @@ body.dist #detail{display:none!important}
         '<h2>Wind speed ('+UW[uw].l+')</h2>'+chart(S.s.map(Wf),{c:'#2aefc8',lo:0,label:'Wind'})+
         (M?'<h2>Wave height (m)</h2>'+chart(M.wave_height.map(nz),{c:'#38bdf8',lo:0,hi:Math.max(1,Math.max.apply(null,M.wave_height.map(nz))),d:1,label:'Waves'}):'')+
       '</div>';
-    $('x').onclick=function(){
-      sel=null;detail.className='panel detail';
-      document.body.classList.remove('pf-open');
-      if(marker){marker.remove();marker=null;}
-      saveHash();
-    };
+    $('x').onclick=function(){sel=null;detail.className='panel detail';if(marker){marker.remove();marker=null;}saveHash();};
     $('sh2').onclick=function(){shareLink(this);};
   }
 
