@@ -3,79 +3,113 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sri Lanka Weather</title>
+<title>Island Weather — Sri Lanka Forecast</title>
+<meta name="theme-color" content="#07111b">
+<meta name="description" content="Explore Sri Lanka's weather through an interactive map, animated wind, hourly forecast and district rainfall intelligence.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-  :root{--sea:#0b1d2a;--panel:rgba(11,29,42,.9);--ink:#e8f1f2;--mute:#8fa8b3;--line:#24465a;--accent:#4fd1c5}
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:var(--sea);color:var(--ink);font-family:"Instrument Sans",system-ui,sans-serif}
-  #map{position:absolute;inset:0;background:var(--sea)}
-  .leaflet-tile-pane{filter:invert(1) hue-rotate(195deg) brightness(.75) saturate(.45) contrast(.95)}
-  #field,#wind{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-  #field{z-index:440;opacity:.7}#wind{z-index:450}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}
-  .side{position:absolute;z-index:900;top:14px;left:64px;width:276px;padding:12px 14px}
-  h1{margin:0;font-size:1.05rem;font-weight:600}
-  .side p{margin:2px 0 0;font-size:.8rem;color:var(--mute)}
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
-  .stat b{display:block;font-size:1.1rem;font-variant-numeric:tabular-nums}
-  .stat span{font-size:.74rem;color:var(--mute)}
-  .layers{display:flex;flex-wrap:wrap;gap:6px}
-  button{font:inherit;cursor:pointer;border-radius:8px}
-  .layers button{background:transparent;color:var(--ink);border:1px solid var(--line);padding:5px 10px}
-  .layers button[aria-pressed=true],#play{background:var(--accent);color:var(--sea);border-color:var(--accent);font-weight:600}
-  #play{border:0;padding:8px 14px}
-  button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2px}
-  .legend{margin-top:12px;font-size:.76rem;color:var(--mute)}
-  .ramp{height:8px;border-radius:4px;margin:5px 0 3px;border:1px solid var(--line)}
-  .lab{display:flex;justify-content:space-between}
-  .bar{position:absolute;z-index:900;left:14px;right:14px;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:14px;align-items:center;padding:10px 14px;max-width:760px;margin:0 auto}
-  input[type=range]{flex:1;accent-color:var(--accent);min-width:80px}
-  #when{min-width:128px;font-size:.9rem;text-align:right;font-variant-numeric:tabular-nums}
-  .detail{position:absolute;z-index:900;top:14px;right:14px;width:344px;max-height:calc(100% - 100px);overflow:auto;padding:12px 14px;display:none}
-  .detail.on{display:block}
-  .dh{display:flex;justify-content:space-between;align-items:start;gap:8px}
-  .dh button{background:transparent;color:var(--mute);border:1px solid var(--line);padding:2px 9px}
-  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
-  .tiles div{background:rgba(255,255,255,.05);border-radius:8px;padding:6px 7px}
-  .tiles b{display:block;font-size:.98rem;font-variant-numeric:tabular-nums}.tiles span{font-size:.7rem;color:var(--mute)}
-  .detail h2{font-size:.82rem;margin:12px 0 4px;font-weight:600}
-  .detail ul{margin:6px 0;padding-left:18px;font-size:.86rem;line-height:1.5}
-  svg text{fill:var(--mute);font-size:9px;font-family:inherit}
-  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
-  .leaflet-popup-content{margin:10px 12px;font-family:inherit;font-size:.88rem;line-height:1.45}
-  body.dist #detail{display:none!important}
-  .dm{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:.78rem;color:#fff;text-shadow:0 1px 2px #000;border:2px solid rgba(255,255,255,.85)}
-  .tabs{display:flex;gap:6px;margin:10px 0}
-  .tabs button{background:transparent;color:var(--ink);border:1px solid var(--line);padding:4px 9px;font-size:.82rem}
-  .tabs button[aria-pressed=true]{background:var(--accent);color:var(--sea);border-color:var(--accent);font-weight:600}
-  .row{display:grid;grid-template-columns:112px 1fr 46px;gap:8px;align-items:center;padding:4px 0;cursor:pointer;font-size:.84rem}
-  .row i{display:block;height:8px;border-radius:4px;background:#60a5fa}
-  .row b{text-align:right;font-variant-numeric:tabular-nums}
-  .row small,.note{display:block;color:var(--mute);font-size:.72rem}
-  .row small.hi{color:#fb923c}
-  .note{margin-top:8px}
-  .srch,.units{display:flex;gap:6px;margin-top:10px}
-  input[type=search]{flex:1;min-width:0;background:rgba(255,255,255,.06);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:inherit;font-size:.86rem}
-  .srch button,.units button,.dh button{background:transparent;color:var(--ink);border:1px solid var(--line);padding:5px 10px;font-size:.82rem}
-  select{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:4px 6px;font:inherit;font-size:.82rem}
-  select option{background:#0b1d2a}
-  #res button{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);border:0;border-bottom:1px solid var(--line);border-radius:0;padding:6px 4px;font-size:.84rem}
-  #res{font-size:.8rem;color:var(--mute)}
-  #msg{position:absolute;z-index:1000;top:50%;left:50%;transform:translate(-50%,-50%);padding:12px 16px}
-  @media (max-width:700px){
-    .side{width:calc(100% - 78px)}.stats{display:none}
-    .detail{top:auto;bottom:80px;left:14px;right:14px;width:auto;max-height:46%}
-  }
+
+:root{color-scheme:dark;--bg:#07111b;--panel:rgba(11,25,39,.91);--panel2:#0d1d2b;--line:rgba(164,194,211,.15);--text:#f2f7fb;--muted:#8ca4b5;--teal:#55e6cf;--blue:#5ba7ff;--shadow:0 22px 65px rgba(0,0,0,.38)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:"Instrument Sans",Inter,system-ui,sans-serif}
+body{overflow:hidden}
+#map{position:absolute;inset:0;background:#0a1a27}
+.leaflet-tile-pane{filter:invert(1) hue-rotate(190deg) brightness(.62) saturate(.5) contrast(1.05)}
+#field,#wind{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#field{z-index:440;opacity:.65}#wind{z-index:450}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.side{position:absolute;z-index:900;top:18px;left:76px;width:350px;max-height:calc(100% - 112px);overflow:auto;padding:22px;scrollbar-width:thin;scrollbar-color:#345365 transparent}
+.side:before{content:"WEATHER INTELLIGENCE  /  SRI LANKA";display:block;color:var(--teal);font-size:10px;letter-spacing:.18em;font-weight:700;margin-bottom:13px}
+h1{margin:0;font-size:1.18rem;font-weight:650;letter-spacing:-.035em}
+.side h1{font-size:1.8rem;letter-spacing:-.065em;line-height:1.05}
+.side h1:before{content:none}
+.side p{margin:9px 0 0;font-size:.82rem;color:var(--muted);line-height:1.55}
+.srch{display:flex;gap:8px;margin-top:19px}
+input[type=search]{flex:1;min-width:0;background:#081722;color:var(--text);border:1px solid var(--line);border-radius:11px;padding:12px 13px;font:inherit;font-size:.85rem}
+input[type=search]:focus{outline:1px solid var(--teal);border-color:var(--teal)}
+button,select{font:inherit;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
+button:hover{border-color:rgba(85,230,207,.7)!important}
+button:active{transform:scale(.98)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+#loc{background:var(--teal);color:#06211e;border:1px solid var(--teal);border-radius:11px;padding:0 14px;font-size:.82rem;font-weight:700}
+#res{font-size:.8rem;color:var(--muted);margin-top:5px;max-height:120px;overflow:auto}
+#res button{display:block;width:100%;text-align:left;background:#102435;color:var(--text);border:1px solid transparent;border-radius:9px;padding:9px 10px;margin-top:4px;font-size:.83rem}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:19px 0 21px}
+.stat{position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.018));border:1px solid rgba(164,194,211,.1);border-radius:13px;padding:13px 12px}
+.stat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--teal);opacity:.75}
+.stat b{display:block;font-size:1.25rem;font-weight:650;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
+.stat span{display:block;margin-top:5px;color:var(--muted);font-size:.7rem;line-height:1.4}
+.layers{display:flex;flex-wrap:wrap;gap:7px}
+.layers:before{content:"MAP OVERLAYS";width:100%;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.14em;margin:0 0 3px}
+.layers button,.tabs button{background:#0a1b29;color:#9bb0bd;border:1px solid var(--line);padding:8px 11px;border-radius:9px;font-size:.77rem}
+.layers button[aria-pressed=true],.tabs button[aria-pressed=true]{background:rgba(85,230,207,.12);color:var(--teal);border-color:rgba(85,230,207,.45);font-weight:650}
+.units{display:flex;gap:7px;margin-top:17px;flex-wrap:wrap}
+.units select,.units button{background:#0a1b29;color:#dce8ef;border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:.76rem}
+.units button{margin-left:auto}
+select option{background:#0b1d2a}
+.legend{margin-top:19px;padding-top:16px;border-top:1px solid var(--line);font-size:.75rem;color:var(--muted)}
+#legT{font-size:.78rem;color:#d6e4ed}
+.ramp{height:7px;border-radius:20px;margin:10px 0 7px;border:0}
+.lab{display:flex;justify-content:space-between;font-size:.68rem}
+.bar{position:absolute;z-index:900;left:50%;transform:translateX(-50%);bottom:20px;display:flex;gap:13px;align-items:center;padding:12px 15px;width:min(760px,calc(100% - 40px));border-radius:16px}
+#play{background:var(--teal);color:#06211e;border:1px solid var(--teal);border-radius:10px;padding:10px 17px;font-weight:700;min-width:78px}
+input[type=range]{flex:1;accent-color:var(--teal);min-width:80px;cursor:pointer}
+#when{min-width:145px;font-size:.8rem;text-align:right;font-variant-numeric:tabular-nums;color:#d9e7ef}
+.detail{position:absolute;z-index:900;top:18px;right:18px;width:360px;max-height:calc(100% - 112px);overflow:auto;padding:20px;display:none;scrollbar-width:thin;scrollbar-color:#345365 transparent}
+.detail.on{display:block}
+.dh{display:flex;justify-content:space-between;align-items:start;gap:8px}
+.dh button{background:#102435;color:var(--muted);border:1px solid var(--line);border-radius:9px;padding:6px 10px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:15px 0}
+.tiles div{background:#0b1d2b;border:1px solid rgba(164,194,211,.1);border-radius:12px;padding:12px;min-width:0}
+.tiles b{display:block;font-size:1.12rem;font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.tiles span{display:block;margin-top:4px;font-size:.71rem;color:var(--muted);line-height:1.4}
+.detail h2{font-size:.8rem;margin:19px 0 7px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:#d6e6ee}
+.detail ul{margin:7px 0;padding-left:18px;font-size:.83rem;line-height:1.65;color:#c4d5df}
+.detail li+li{margin-top:5px}
+svg text{fill:var(--muted);font-size:9px;font-family:inherit}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#0b1d2b;color:var(--text);border:1px solid var(--line)}
+.leaflet-popup-content{margin:12px 14px;font-family:inherit;font-size:.85rem;line-height:1.55}
+.leaflet-control-zoom{border:1px solid var(--line)!important;border-radius:10px!important;overflow:hidden}
+.leaflet-control-zoom a{background:#0b1d2b!important;color:var(--text)!important;border-color:var(--line)!important}
+.leaflet-control-attribution{background:rgba(7,17,27,.72)!important;color:#9bb0bd!important}
+.leaflet-control-attribution a{color:var(--teal)!important}
+body.dist #detail{display:none!important}
+.dm{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.78rem;color:#fff;text-shadow:0 1px 2px #000;border:2px solid rgba(255,255,255,.85);box-shadow:0 5px 18px #0007}
+.tabs{display:flex;gap:6px;margin:13px 0;flex-wrap:wrap}
+.row{display:grid;grid-template-columns:108px 1fr 45px;gap:8px;align-items:center;padding:8px 0;cursor:pointer;font-size:.81rem;border-bottom:1px solid rgba(164,194,211,.08)}
+.row i{display:block;height:7px;border-radius:5px;background:linear-gradient(90deg,#4d9cff,#8b7bfa)}
+.row b{text-align:right;font-variant-numeric:tabular-nums}
+.row small,.note{display:block;color:var(--muted);font-size:.69rem;line-height:1.45}
+.row small.hi{color:#fb923c}
+.note{margin-top:11px}
+#msg{position:absolute;z-index:1000;top:50%;left:50%;transform:translate(-50%,-50%);padding:15px 20px;border-radius:13px;color:var(--text);font-size:.88rem}
+@media(max-width:900px){.side{left:62px;width:310px;padding:17px}.side h1{font-size:1.55rem}.detail{width:330px;right:12px}}
+@media(max-width:700px){
+ body{overflow:hidden}
+ .side{top:9px;left:52px;right:9px;width:auto;max-height:calc(100% - 100px);padding:13px;border-radius:15px}
+ .side:before{font-size:8px;margin-bottom:8px}.side h1{font-size:1.35rem}.side p{font-size:.72rem;margin-top:5px}
+ .srch{margin-top:10px}input[type=search]{padding:10px}
+ .stats{grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 13px}.stat{padding:8px 9px}.stat b{font-size:.96rem}.stat span{font-size:.65rem}
+ .layers{gap:5px}.layers button{padding:6px 8px;font-size:.69rem}
+ .units{margin-top:10px;gap:5px}.units select,.units button{padding:7px;font-size:.7rem}.units button{margin-left:0}
+ .legend{margin-top:12px;padding-top:10px}
+ .detail{top:auto;bottom:82px;left:9px;right:9px;width:auto;max-height:42vh;padding:14px;border-radius:15px}
+ .bar{bottom:max(9px,env(safe-area-inset-bottom));width:calc(100% - 18px);gap:8px;padding:8px 9px;border-radius:13px}
+ #play{padding:9px 11px;min-width:62px}#when{min-width:94px;font-size:.71rem}
+ #res{max-height:80px}
+}
+@media(max-width:390px){.side{left:48px;right:7px;padding:10px}.side h1{font-size:1.2rem}.units select,.units button{font-size:.66rem;padding:6px}.layers button{font-size:.65rem;padding:5px 6px}.stats{gap:5px}.bar{gap:6px}#when{min-width:80px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
+
 </style>
 </head>
 <body>
 <div id="map"></div><canvas id="field"></canvas><canvas id="wind"></canvas>
 <section class="panel side">
-  <h1>Sri Lanka weather</h1><p>Forecast by Open-Meteo. Click the map or search a town.</p>
+  <h1>Island Weather</h1><p>Interactive forecast intelligence for Sri Lanka.<br>Explore atmospheric conditions, coastlines and district rainfall.</p>
   <div class="srch"><input id="q" type="search" placeholder="Search a town" aria-label="Search a town" autocomplete="off"><button type="button" id="loc" aria-label="Use my location" title="Use my location">Locate</button></div><div id="res"></div>
   <div class="stats" id="stats"></div>
   <div class="layers" id="layers" role="group" aria-label="Map layer"></div>
