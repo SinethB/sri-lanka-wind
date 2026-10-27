@@ -15,8 +15,9 @@
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:var(--sea);color:var(--ink);font-family:"Instrument Sans",system-ui,sans-serif}
   #map{position:absolute;inset:0;background:var(--sea)}
+  .leaflet-tile-pane{filter:invert(1) hue-rotate(195deg) brightness(.75) saturate(.45) contrast(.95)}
   #wind{position:absolute;inset:0;z-index:450;pointer-events:none}
-  .title{position:absolute;z-index:900;top:14px;left:14px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .title{position:absolute;z-index:900;top:14px;left:64px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
   .title h1{margin:0;font-size:1.05rem;font-weight:600}
   .title p{margin:2px 0 0;font-size:.82rem;color:var(--mute)}
   .bar{position:absolute;z-index:900;left:14px;right:14px;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:14px;align-items:center;
@@ -56,9 +57,10 @@
   for(var i=0;i<nLat;i++) for(var j=0;j<nLon;j++){ lats.push((LAT0+i*STEP).toFixed(2)); lons.push((LON0+j*STEP).toFixed(2)); }
 
   var map=L.map('map',{zoomControl:true,minZoom:6,maxZoom:10,
-    maxBounds:[[3,76],[12.5,85]]}).setView([7.8,80.7],7);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    attribution:'&copy; OpenStreetMap contributors &copy; CARTO',subdomains:'abcd'}).addTo(map);
+    maxBounds:[[3,76],[12.5,85]]})
+  map.fitBounds([[5.7,79.4],[9.9,82.1]],{padding:[60,60]});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 
   var canvas=document.getElementById('wind'), ctx=canvas.getContext('2d');
   var slider=document.getElementById('slider'), when=document.getElementById('when'),
@@ -84,8 +86,8 @@
       U.push(u); V.push(v);
     }
     // start at the current hour
-    var now=new Date(), idx=0;
-    for(var q=0;q<n;q++){ if(new Date(times[q])<=now) idx=q; }
+    var nowLocal=Date.now()+(arr[0].utc_offset_seconds||0)*1000, idx=0;
+    for(var q=0;q<n;q++){ if(Date.parse(times[q]+'Z')<=nowLocal) idx=q; }
     hour=idx; slider.max=n-1; slider.value=hour; ready=true; msg.remove(); label();
     requestAnimationFrame(frame);
   }).catch(function(e){
