@@ -58,6 +58,13 @@
   .row small,.note{display:block;color:var(--mute);font-size:.72rem}
   .row small.hi{color:#fb923c}
   .note{margin-top:8px}
+  .srch,.units{display:flex;gap:6px;margin-top:10px}
+  input[type=search]{flex:1;min-width:0;background:rgba(255,255,255,.06);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:inherit;font-size:.86rem}
+  .srch button,.units button,.dh button{background:transparent;color:var(--ink);border:1px solid var(--line);padding:5px 10px;font-size:.82rem}
+  select{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:4px 6px;font:inherit;font-size:.82rem}
+  select option{background:#0b1d2a}
+  #res button{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);border:0;border-bottom:1px solid var(--line);border-radius:0;padding:6px 4px;font-size:.84rem}
+  #res{font-size:.8rem;color:var(--mute)}
   #msg{position:absolute;z-index:1000;top:50%;left:50%;transform:translate(-50%,-50%);padding:12px 16px}
   @media (max-width:700px){
     .side{width:calc(100% - 78px)}.stats{display:none}
@@ -68,9 +75,11 @@
 <body>
 <div id="map"></div><canvas id="field"></canvas><canvas id="wind"></canvas>
 <section class="panel side">
-  <h1>Sri Lanka weather</h1><p>Forecast by Open-Meteo. Click the map for a point forecast.</p>
+  <h1>Sri Lanka weather</h1><p>Forecast by Open-Meteo. Click the map or search a town.</p>
+  <div class="srch"><input id="q" type="search" placeholder="Search a town" aria-label="Search a town" autocomplete="off"><button type="button" id="loc" aria-label="Use my location" title="Use my location">Locate</button></div><div id="res"></div>
   <div class="stats" id="stats"></div>
   <div class="layers" id="layers" role="group" aria-label="Map layer"></div>
+  <div class="units"><select id="uw" aria-label="Wind unit"><option value="kmh">km/h</option><option value="ms">m/s</option><option value="kn">knots</option></select><select id="ut" aria-label="Temperature unit"><option value="c">°C</option><option value="f">°F</option></select><button type="button" id="share">Share link</button></div>
   <div class="legend"><div id="legT"></div><div class="ramp" id="ramp"></div><div class="lab" id="legL"></div></div>
 </section>
 <aside class="panel detail" id="detail" aria-live="polite"></aside>
@@ -89,13 +98,18 @@
   for(var i=0;i<nLat;i++)for(var j=0;j<nLon;j++){lats.push((LAT0+i*STEP).toFixed(2));lons.push((LON0+j*STEP).toFixed(2));}
 
   var map=L.map('map',{minZoom:6,maxZoom:10,maxBounds:[[3,76],[12.5,85]]});
-  map.fitBounds([[5.7,79.4],[9.9,82.1]],{padding:[60,60]});
+  var HS=parseHash();
+  if(HS.c&&HS.c.length===2&&!isNaN(HS.c[0])&&!isNaN(HS.c[1])&&+HS.z)map.setView(HS.c,+HS.z);else map.fitBounds([[5.7,79.4],[9.9,82.1]],{padding:[60,60]});
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 
   var $=function(id){return document.getElementById(id)};
+  var UW={kmh:{l:'km/h',f:1},ms:{l:'m/s',f:1/3.6},kn:{l:'kn',f:0.539957}},uw='kmh',ut='c';
+  function Wf(k){return k*UW[uw].f}
+  function Tm(c){return ut==='f'?c*9/5+32:c}
+  function TU(){return ut==='f'?'°F':'°C'}
   var canvas=$('wind'),ctx=canvas.getContext('2d'),fc=$('field'),fx=fc.getContext('2d'),CELL=6;
   var slider=$('slider'),when=$('when'),playBtn=$('play'),detail=$('detail');
-  var times=[],D={u:[],v:[],t:[],r:[],p:[]},hour=0,ready=false,playing=false,timer=null,layer='wind',sel=null,marker=null;
+  var times=[],D={u:[],v:[],t:[],r:[],p:[]},hour=0,ready=false,playing=false,timer=null,layer=/^(wind|temp|rain|pres|dist)$/.test(HS.layer)?HS.layer:'wind',sel=null,marker=null;
 
   function size(){canvas.width=innerWidth;canvas.height=innerHeight;fc.width=Math.ceil(innerWidth/CELL);fc.height=Math.ceil(innerHeight/CELL);ctx.clearRect(0,0,canvas.width,canvas.height);drawField();}
 
@@ -116,16 +130,15 @@
   // layer buttons + legend
   [['wind','Wind'],['temp','Temperature'],['rain','Rain'],['pres','Pressure'],['dist','Districts']].forEach(function(l){
     var b=document.createElement('button');b.type='button';b.textContent=l[1];b.setAttribute('aria-pressed',l[0]===layer);
-    b.onclick=function(){layer=l[0];[].forEach.call($('layers').children,function(x){x.setAttribute('aria-pressed',x===b)});legend();drawField();ctx.clearRect(0,0,canvas.width,canvas.height);setDist();};
+    b.onclick=function(){layer=l[0];[].forEach.call($('layers').children,function(x){x.setAttribute('aria-pressed',x===b)});legend();drawField();ctx.clearRect(0,0,canvas.width,canvas.height);setDist();saveHash();};
     $('layers').appendChild(b);
   });
   function legend(){
     var st=layer==='wind'?SPEED:layer==='dist'?DIST:FIELDS[layer].stops,lo=st[0][0],hi=st[st.length-1][0];
-    $('legT').textContent=layer==='wind'?'Wind speed (km/h)':layer==='dist'?'District rain, '+WIN[dWin].t+' (mm)':FIELDS[layer].name;
+    $('legT').textContent=layer==='wind'?'Wind speed ('+UW[uw].l+')':layer==='temp'?'Temperature ('+TU()+')':layer==='dist'?'District rain, '+WIN[dWin].t+' (mm)':FIELDS[layer].name;
     $('ramp').style.background='linear-gradient(90deg,'+st.map(function(s){var c=s[1];return 'rgba('+c[0]+','+c[1]+','+c[2]+','+(c[3]==null?1:Math.max(c[3]/255,.35))+') '+((s[0]-lo)/(hi-lo)*100)+'%'}).join(',')+')';
-    $('legL').innerHTML=(layer==='wind'?['0','15','30','45+']:layer==='dist'?[0,33,67,100].map(function(x,i){return Math.round(x*WIN[dWin].m)+(i==3?'+':'')}):FIELDS[layer].labels).map(function(x){return '<span>'+x+'</span>'}).join('');
+    $('legL').innerHTML=(layer==='wind'?[0,15,30,45].map(function(x,i){return Math.round(Wf(x))+(i==3?'+':'')}):layer==='temp'?[22,27,32,37].map(function(x,i){return Math.round(Tm(x))+(i==3?'+':'')}):layer==='dist'?[0,33,67,100].map(function(x,i){return Math.round(x*WIN[dWin].m)+(i==3?'+':'')}):FIELDS[layer].labels).map(function(x){return '<span>'+x+'</span>'}).join('');
   }
-  legend();
 
   // grid sampling
   function wts(lat,lon){
@@ -149,16 +162,18 @@
     }
     var nowLocal=Date.now()+(arr[0].utc_offset_seconds||0)*1000;
     for(var q=0;q<times.length;q++)if(Date.parse(times[q]+'Z')<=nowLocal)hour=q;
-    slider.max=times.length-1;slider.value=hour;ready=true;$('msg').remove();update();requestAnimationFrame(frame);
+    if(HS.t&&times.indexOf(HS.t)>=0)hour=times.indexOf(HS.t);slider.max=times.length-1;slider.value=hour;ready=true;$('msg').remove();update();requestAnimationFrame(frame);
+    if(layer==='dist')setDist();
+    if(HS.p){var pp=HS.p.split(',').map(Number);if(pp.length===2)selectPoint(L.latLng(pp[0],pp[1]),'');}
   }).catch(function(e){$('msg').textContent='Could not load the forecast ('+e.message+'). Check your connection and reload.';});
 
   function dayLabel(t){return new Date(times[t]).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});}
-  function update(){when.textContent=dayLabel(hour);drawField();stats();if(sel)renderDetail();}
+  function update(){when.textContent=dayLabel(hour);drawField();stats();if(sel)renderDetail();saveHash();}
 
   function stats(){
     var n=D.u[hour].length,mw=0,at=0,mr=0,ap=0;
     for(var k=0;k<n;k++){mw=Math.max(mw,Math.hypot(D.u[hour][k],D.v[hour][k])*3.6);at+=D.t[hour][k];mr=Math.max(mr,D.r[hour][k]);ap+=D.p[hour][k];}
-    $('stats').innerHTML=[[mw.toFixed(0)+' km/h','Strongest wind'],[(at/n).toFixed(1)+' °C','Average temperature'],[mr.toFixed(1)+' mm/h','Heaviest rain'],[(ap/n).toFixed(0)+' hPa','Average pressure']]
+    $('stats').innerHTML=[[Wf(mw).toFixed(0)+' '+UW[uw].l,'Strongest wind'],[Tm(at/n).toFixed(1)+' '+TU(),'Average temperature'],[mr.toFixed(1)+' mm/h','Heaviest rain'],[(ap/n).toFixed(0)+' hPa','Average pressure']]
       .map(function(s){return '<div class="stat"><b>'+s[0]+'</b><span>'+s[1]+'</span></div>'}).join('');
   }
 
@@ -209,6 +224,7 @@
   var WIN={p24:{t:'past 24 h',l:'Past 24 h',m:1,d:1},n24:{t:'next 24 h',l:'Next 24 h',m:1,d:1},n72:{t:'next 72 h',l:'Next 72 h',m:2,d:3}};
   var DN=[['Ampara',7.30,81.67],['Anuradhapura',8.34,80.41],['Badulla',6.99,81.06],['Batticaloa',7.71,81.70],['Colombo',6.93,79.86],['Galle',6.05,80.22],['Gampaha',7.09,80.00],['Hambantota',6.12,81.12],['Jaffna',9.66,80.01],['Kalutara',6.58,79.96],['Kandy',7.29,80.63],['Kegalle',7.25,80.35],['Kilinochchi',9.39,80.40],['Kurunegala',7.49,80.37],['Mannar',8.98,79.91],['Matale',7.47,80.62],['Matara',5.95,80.55],['Monaragala',6.87,81.35],['Mullaitivu',9.27,80.81],['Nuwara Eliya',6.97,80.77],['Polonnaruwa',7.94,81.00],['Puttalam',8.03,79.84],['Ratnapura',6.68,80.40],['Trincomalee',8.57,81.23],['Vavuniya',8.75,80.50]];
   var dWin='n24',dData=null,clim=null,dLayer=L.layerGroup(),mk={};
+  legend();
   fetch('https://api.open-meteo.com/v1/forecast?latitude='+DN.map(function(d){return d[1]}).join(',')+'&longitude='+DN.map(function(d){return d[2]}).join(',')+'&hourly=precipitation&past_days=2&forecast_days=4&timezone=Asia%2FColombo')
     .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(data){
       var arr=Array.isArray(data)?data:[data],tm=arr[0].hourly.time,now=Date.now()+(arr[0].utc_offset_seconds||0)*1000,idx=0;
@@ -254,12 +270,27 @@
   });
 
   // point forecast
-  var compass=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-  map.on('click',function(e){
-    if(layer==='dist'||!ready||!wts(e.latlng.lat,e.latlng.lng))return;
-    sel=e.latlng;if(!marker)marker=L.circleMarker(sel,{radius:6,color:'#fff',weight:2,fillColor:'#4fd1c5',fillOpacity:1}).addTo(map);
-    marker.setLatLng(sel);renderDetail();
-  });
+  var compass=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'],place='',ptCache={};
+  function keyOf(ll){return ll.lat.toFixed(2)+','+ll.lng.toFixed(2);}
+  function esc(x){return String(x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]});}
+  function uvc(u){return u>=11?'extreme':u>=8?'very high':u>=6?'high':u>=3?'moderate':'low';}
+  map.on('click',function(e){if(layer==='dist'||!ready)return;selectPoint(e.latlng,'');});
+  function selectPoint(ll,name){
+    if(!ready||!wts(ll.lat,ll.lng))return false;
+    if(layer==='dist')$('layers').children[0].click();
+    sel=ll;place=name||'';
+    if(!marker)marker=L.circleMarker(sel,{radius:6,color:'#fff',weight:2,fillColor:'#4fd1c5',fillOpacity:1}).addTo(map);
+    marker.setLatLng(sel);
+    var key=keyOf(sel);
+    if(!(key in ptCache)){
+      ptCache[key]='wait';
+      fetch('https://api.open-meteo.com/v1/forecast?latitude='+ll.lat.toFixed(3)+'&longitude='+ll.lng.toFixed(3)+'&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,pressure_msl,wind_speed_10m,wind_direction_10m,uv_index,cloud_cover,cape&daily=sunrise,sunset&wind_speed_unit=ms&forecast_days=3&timezone=Asia%2FColombo')
+        .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+        .then(function(d){ptCache[key]=(d.hourly&&d.hourly.time.length===times.length&&d.hourly.time[0]===times[0])?d:null;if(sel&&keyOf(sel)===key)renderDetail();})
+        .catch(function(){ptCache[key]=null;if(sel&&keyOf(sel)===key)renderDetail();});
+    }
+    renderDetail();saveHash();return true;
+  }
   function chart(v,o){
     var W=316,H=96,pl=30,pr=6,pt=8,pb=16,n=v.length,lo=o.lo!=null?o.lo:Math.min.apply(null,v),hi=o.hi!=null?o.hi:Math.max.apply(null,v);
     if(hi-lo<1)hi=lo+1;
@@ -272,21 +303,65 @@
     return s+'<line x1="'+X(hour)+'" x2="'+X(hour)+'" y1="'+pt+'" y2="'+(H-pb)+'" stroke="#fff" stroke-width="1.2"/></svg>';
   }
   function renderDetail(){
-    var w=wts(sel.lat,sel.lng),n=times.length,S={s:[],t:[],r:[],p:[]};
-    for(var t=0;t<n;t++){S.s.push(Math.hypot(val(D.u[t],w),val(D.v[t],w))*3.6);S.t.push(val(D.t[t],w));S.r.push(Math.max(0,val(D.r[t],w)));S.p.push(val(D.p[t],w));}
-    var end=Math.min(hour+23,n-1),pk=hour,wet=hour,rs=0,tmin=99,tmax=-99;
-    for(t=hour;t<=end;t++){if(S.s[t]>S.s[pk])pk=t;if(S.r[t]>S.r[wet])wet=t;rs+=S.r[t];tmin=Math.min(tmin,S.t[t]);tmax=Math.max(tmax,S.t[t]);}
-    var dp=S.p[end]-S.p[hour],dir=(Math.atan2(-val(D.u[hour],w),-val(D.v[hour],w))*180/Math.PI+360)%360;
+    var pd=ptCache[keyOf(sel)],X=(pd&&pd!=='wait')?pd:null,E=X?X.hourly:null,n=times.length,S={s:[],t:[],r:[],p:[],d:[]},t,w,uu,vv;
+    if(E){for(t=0;t<n;t++){S.t.push(E.temperature_2m[t]);S.s.push(E.wind_speed_10m[t]*3.6);S.r.push(Math.max(0,E.precipitation[t]||0));S.p.push(E.pressure_msl[t]);S.d.push(E.wind_direction_10m[t]);}}
+    else{w=wts(sel.lat,sel.lng);for(t=0;t<n;t++){uu=val(D.u[t],w);vv=val(D.v[t],w);S.s.push(Math.hypot(uu,vv)*3.6);S.d.push((Math.atan2(-uu,-vv)*180/Math.PI+360)%360);S.t.push(val(D.t[t],w));S.r.push(Math.max(0,val(D.r[t],w)));S.p.push(val(D.p[t],w));}}
+    var end=Math.min(hour+23,n-1),pk=hour,wet=hour,rs=0,tmin=99,tmax=-99,cp=hour,cmax=0;
+    for(t=hour;t<=end;t++){if(S.s[t]>S.s[pk])pk=t;if(S.r[t]>S.r[wet])wet=t;rs+=S.r[t];tmin=Math.min(tmin,S.t[t]);tmax=Math.max(tmax,S.t[t]);if(E&&(E.cape[t]||0)>cmax){cmax=E.cape[t];cp=t;}}
+    var dp=S.p[end]-S.p[hour],dir=S.d[hour],storm=cmax>=2000?'High':cmax>=1000?'Moderate':'Low',day=Math.min(2,Math.floor(hour/24)),tl=function(a,b){return '<div><b>'+a+'</b><span>'+b+'</span></div>'};
+    var feels=E?' · feels '+Tm(E.apparent_temperature[hour]).toFixed(0)+'°':'';
     detail.className='panel detail on';
-    detail.innerHTML='<div class="dh"><div><h1>Point forecast</h1><p style="margin:2px 0 0;font-size:.8rem;color:var(--mute)">'+sel.lat.toFixed(2)+'°N, '+sel.lng.toFixed(2)+'°E · '+dayLabel(hour)+'</p></div><button type="button" id="x" aria-label="Close">×</button></div>'+
-      '<div class="tiles"><div><b>'+S.t[hour].toFixed(1)+'°</b><span>Temp °C</span></div><div><b>'+S.s[hour].toFixed(0)+' '+compass[Math.round(dir/22.5)%16]+'</b><span>Wind km/h</span></div><div><b>'+S.r[hour].toFixed(1)+'</b><span>Rain mm/h</span></div><div><b>'+S.p[hour].toFixed(0)+'</b><span>hPa</span></div></div>'+
-      '<h2>Next 24 hours</h2><ul><li>Temperature between '+tmin.toFixed(0)+' and '+tmax.toFixed(0)+' °C.</li><li>Wind peaks at '+S.s[pk].toFixed(0)+' km/h around '+dayLabel(pk)+'.</li><li>'+
-      (rs<0.2?'Little or no rain expected.':'About '+rs.toFixed(1)+' mm of rain, heaviest around '+dayLabel(wet)+'.')+'</li><li>Pressure is '+(dp<-1?'falling':dp>1?'rising':'steady')+' ('+(dp>0?'+':'')+dp.toFixed(1)+' hPa).</li></ul>'+
-      '<h2>Temperature (°C)</h2>'+chart(S.t,{c:'#fb923c',label:'Temperature forecast'})+
+    detail.innerHTML='<div class="dh"><div><h1>'+esc(place||'Point forecast')+'</h1><p style="margin:2px 0 0;font-size:.8rem;color:var(--mute)">'+sel.lat.toFixed(2)+'°N, '+sel.lng.toFixed(2)+'°E · '+dayLabel(hour)+'</p></div><div><button type="button" id="sh2">Share</button> <button type="button" id="x" aria-label="Close">×</button></div></div>'+
+      '<div class="tiles">'+tl(Tm(S.t[hour]).toFixed(0)+'°','Temp '+TU()+feels)+tl(Wf(S.s[hour]).toFixed(0)+' '+compass[Math.round(dir/22.5)%16],'Wind '+UW[uw].l)+tl(S.r[hour].toFixed(1),'Rain mm/h')+tl(S.p[hour].toFixed(0),'Pressure hPa')+'</div>'+
+      (E?'<div class="tiles">'+tl(Math.round(E.relative_humidity_2m[hour])+'%','Humidity')+tl(Math.round(E.uv_index[hour]||0),'UV · '+uvc(E.uv_index[hour]||0))+tl(Math.round(E.cloud_cover[hour])+'%','Cloud cover')+tl(storm,'Storm potential')+'</div><span class="note" style="margin:0 0 6px">Sunrise '+X.daily.sunrise[day].slice(11,16)+' · Sunset '+X.daily.sunset[day].slice(11,16)+'</span>'
+        :'<span class="note">'+(pd==='wait'?'Loading humidity, UV and storm data…':'Showing the grid estimate; exact-point data is unavailable.')+'</span>')+
+      '<h2>Next 24 hours</h2><ul><li>Temperature between '+Tm(tmin).toFixed(0)+' and '+Tm(tmax).toFixed(0)+' '+TU()+'.</li><li>Wind peaks at '+Wf(S.s[pk]).toFixed(0)+' '+UW[uw].l+' around '+dayLabel(pk)+'.</li><li>'+
+      (rs<0.2?'Little or no rain expected.':'About '+rs.toFixed(1)+' mm of rain, heaviest around '+dayLabel(wet)+'.')+'</li><li>Pressure is '+(dp<-1?'falling':dp>1?'rising':'steady')+' ('+(dp>0?'+':'')+dp.toFixed(1)+' hPa).</li>'+
+      (E?'<li>Thunderstorm potential: '+storm+(cmax>=1000?', peaking around '+dayLabel(cp):'')+'. This reflects atmospheric instability, not a lightning forecast.</li>':'')+'</ul>'+
+      '<h2>Temperature ('+TU()+')</h2>'+chart(S.t.map(Tm),{c:'#fb923c',label:'Temperature forecast'})+
       '<h2>Rain (mm per hour)</h2>'+chart(S.r,{c:'#60a5fa',bar:true,lo:0,hi:Math.max(2,Math.max.apply(null,S.r)),d:1,label:'Rain forecast'})+
-      '<h2>Wind speed (km/h)</h2>'+chart(S.s,{c:'#4fd1c5',lo:0,label:'Wind forecast'});
-    $('x').onclick=function(){sel=null;detail.className='panel detail';if(marker){marker.remove();marker=null;}};
+      '<h2>Wind speed ('+UW[uw].l+')</h2>'+chart(S.s.map(Wf),{c:'#4fd1c5',lo:0,label:'Wind forecast'});
+    $('x').onclick=function(){sel=null;detail.className='panel detail';if(marker){marker.remove();marker=null;}saveHash();};
+    $('sh2').onclick=function(){shareLink(this);};
   }
+
+  // search, location, units, share links
+  var qt;
+  $('q').addEventListener('input',function(){
+    clearTimeout(qt);var v=this.value.trim(),res=$('res');
+    if(v.length<2){res.textContent='';return;}
+    qt=setTimeout(function(){
+      fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(v)+'&count=6&language=en&countryCode=LK').then(function(r){return r.json();}).then(function(j){
+        var rs=j.results||[];res.textContent=rs.length?'':'No match in Sri Lanka.';
+        rs.forEach(function(r){var b=document.createElement('button');b.type='button';b.textContent=r.name+(r.admin1?', '+r.admin1:'');
+          b.onclick=function(){res.textContent='';var ll=L.latLng(r.latitude,r.longitude);if(selectPoint(ll,r.name))map.flyTo(ll,9);else res.textContent='That place is outside the forecast area.';};res.appendChild(b);});
+      }).catch(function(){res.textContent='Search is unavailable right now.';});
+    },300);
+  });
+  $('loc').onclick=function(){
+    var res=$('res');if(!navigator.geolocation){res.textContent='Location is not supported in this browser.';return;}
+    navigator.geolocation.getCurrentPosition(function(p){var ll=L.latLng(p.coords.latitude,p.coords.longitude);if(selectPoint(ll,'Your location'))map.flyTo(ll,9);else res.textContent='Your location is outside the forecast area.';},function(){res.textContent='Location permission was denied.';});
+  };
+  function refreshUnits(){legend();if(ready){stats();if(sel)renderDetail();}}
+  $('uw').onchange=function(){uw=this.value;refreshUnits();};
+  $('ut').onchange=function(){ut=this.value;refreshUnits();};
+  function parseHash(){
+    var o={};location.hash.slice(1).split('&').forEach(function(kv){var a=kv.split('=');if(a[0])o[a[0]]=decodeURIComponent(a[1]||'');});
+    if(o.c)o.c=o.c.split(',').map(Number);return o;
+  }
+  function saveHash(){
+    if(!ready)return;var c=map.getCenter(),q=['layer='+layer,'t='+times[hour]];
+    if(sel)q.push('p='+sel.lat.toFixed(3)+','+sel.lng.toFixed(3));
+    q.push('c='+c.lat.toFixed(2)+','+c.lng.toFixed(2),'z='+map.getZoom());
+    try{history.replaceState(null,'','#'+q.join('&'));}catch(e){}
+  }
+  function shareLink(btn){
+    saveHash();var u=location.href,o=btn.textContent;
+    function done(){btn.textContent='Copied';setTimeout(function(){btn.textContent=o;},1500);}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(u).then(done,function(){prompt('Copy this link',u);});else prompt('Copy this link',u);
+  }
+  $('share').onclick=function(){shareLink(this);};
+  map.on('moveend',saveHash);
 })();
 </script>
 </body>
