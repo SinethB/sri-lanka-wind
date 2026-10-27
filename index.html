@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sri Lanka Wind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --sea:#0b1d2a; --panel:rgba(11,29,42,.88); --ink:#e8f1f2; --mute:#8fa8b3; --line:#24465a; --accent:#4fd1c5;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--sea);color:var(--ink);font-family:"Instrument Sans",system-ui,sans-serif}
+  #map{position:absolute;inset:0;background:var(--sea)}
+  #wind{position:absolute;inset:0;z-index:450;pointer-events:none}
+  .title{position:absolute;z-index:900;top:14px;left:14px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .title h1{margin:0;font-size:1.05rem;font-weight:600}
+  .title p{margin:2px 0 0;font-size:.82rem;color:var(--mute)}
+  .bar{position:absolute;z-index:900;left:14px;right:14px;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:14px;align-items:center;
+       padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:760px;margin:0 auto}
+  button{font:inherit;color:var(--sea);background:var(--accent);border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer}
+  button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  input[type=range]{flex:1;accent-color:var(--accent);min-width:80px}
+  #when{min-width:128px;font-size:.9rem;text-align:right;font-variant-numeric:tabular-nums}
+  .legend{position:absolute;z-index:900;top:14px;right:14px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:.78rem;color:var(--mute)}
+  .ramp{width:150px;height:8px;border-radius:4px;margin:6px 0 3px;background:linear-gradient(90deg,#3b82f6,#22d3ee,#4ade80,#facc15,#fb923c,#ef4444)}
+  .ramp+div{display:flex;justify-content:space-between}
+  #msg{position:absolute;z-index:1000;top:50%;left:50%;transform:translate(-50%,-50%);padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+  .leaflet-popup-content{margin:10px 12px;font-family:inherit;font-size:.9rem;line-height:1.4}
+  @media (max-width:560px){.legend{top:auto;bottom:84px;right:14px}.title p{display:none}}
+  @media (prefers-reduced-motion:reduce){#wind{opacity:.7}}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<canvas id="wind"></canvas>
+<div class="title"><h1>Sri Lanka wind</h1><p>Forecast from Open-Meteo, 10 m height</p></div>
+<div class="legend">Wind speed (km/h)<div class="ramp"></div><div><span>0</span><span>15</span><span>30</span><span>45+</span></div></div>
+<div class="bar">
+  <button id="play" type="button">Play</button>
+  <input id="slider" type="range" min="0" max="0" value="0" aria-label="Forecast hour">
+  <div id="when">Loading…</div>
+</div>
+<div id="msg">Loading wind data…</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+  // Grid covering Sri Lanka and nearby sea
+  var LAT0=5.5, LAT1=10.0, LON0=79.0, LON1=82.5, STEP=0.5;
+  var nLat=Math.round((LAT1-LAT0)/STEP)+1, nLon=Math.round((LON1-LON0)/STEP)+1;
+  var lats=[], lons=[];
+  for(var i=0;i<nLat;i++) for(var j=0;j<nLon;j++){ lats.push((LAT0+i*STEP).toFixed(2)); lons.push((LON0+j*STEP).toFixed(2)); }
+
+  var map=L.map('map',{zoomControl:true,minZoom:6,maxZoom:10,
+    maxBounds:[[3,76],[12.5,85]]}).setView([7.8,80.7],7);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; OpenStreetMap contributors &copy; CARTO',subdomains:'abcd'}).addTo(map);
+
+  var canvas=document.getElementById('wind'), ctx=canvas.getContext('2d');
+  var slider=document.getElementById('slider'), when=document.getElementById('when'),
+      playBtn=document.getElementById('play'), msg=document.getElementById('msg');
+  var times=[], U=[], V=[], hour=0, ready=false, playing=false, timer=null;
+
+  function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; ctx.clearRect(0,0,canvas.width,canvas.height); }
+  addEventListener('resize',resize); resize();
+
+  var url='https://api.open-meteo.com/v1/forecast?latitude='+lats.join(',')+'&longitude='+lons.join(',')+
+    '&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&forecast_days=3&timezone=Asia%2FColombo';
+
+  fetch(url).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }).then(function(data){
+    var arr=Array.isArray(data)?data:[data];
+    times=arr[0].hourly.time;
+    var n=times.length;
+    for(var t=0;t<n;t++){
+      var u=new Float32Array(arr.length), v=new Float32Array(arr.length);
+      for(var k=0;k<arr.length;k++){
+        var s=arr[k].hourly.wind_speed_10m[t], d=arr[k].hourly.wind_direction_10m[t]*Math.PI/180;
+        u[k]=-s*Math.sin(d); v[k]=-s*Math.cos(d);   // direction is where wind comes from
+      }
+      U.push(u); V.push(v);
+    }
+    // start at the current hour
+    var now=new Date(), idx=0;
+    for(var q=0;q<n;q++){ if(new Date(times[q])<=now) idx=q; }
+    hour=idx; slider.max=n-1; slider.value=hour; ready=true; msg.remove(); label();
+    requestAnimationFrame(frame);
+  }).catch(function(e){
+    msg.textContent='Could not load wind data ('+e.message+'). Check your connection and reload.';
+  });
+
+  function label(){
+    var d=new Date(times[hour]);
+    when.textContent=d.toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});
+  }
+
+  // Bilinear sample of wind at a location; returns [u,v] or null outside the grid
+  function sample(lat,lon){
+    if(lat<LAT0||lat>LAT1||lon<LON0||lon>LON1) return null;
+    var fi=(lat-LAT0)/STEP, fj=(lon-LON0)/STEP;
+    var i=Math.min(Math.floor(fi),nLat-2), j=Math.min(Math.floor(fj),nLon-2), a=fi-i, b=fj-j;
+    var u=U[hour], v=V[hour];
+    function g(arr){
+      var p=i*nLon+j;
+      return arr[p]*(1-a)*(1-b)+arr[p+1]*(1-a)*b+arr[p+nLon]*a*(1-b)+arr[p+nLon+1]*a*b;
+    }
+    return [g(u),g(v)];
+  }
+
+  function color(ms){
+    var kmh=ms*3.6, stops=[[0,[59,130,246]],[10,[34,211,238]],[20,[74,222,128]],[30,[250,204,21]],[40,[251,146,60]],[50,[239,68,68]]];
+    if(kmh>=50) return 'rgb(239,68,68)';
+    for(var i=0;i<stops.length-1;i++){
+      if(kmh<stops[i+1][0]){
+        var f=(kmh-stops[i][0])/(stops[i+1][0]-stops[i][0]), c0=stops[i][1], c1=stops[i+1][1];
+        return 'rgb('+Math.round(c0[0]+(c1[0]-c0[0])*f)+','+Math.round(c0[1]+(c1[1]-c0[1])*f)+','+Math.round(c0[2]+(c1[2]-c0[2])*f)+')';
+      }
+    }
+  }
+
+  // Particles live in lat/lon so they stay put when the map moves
+  var N=matchMedia('(max-width:560px)').matches?900:1800, P=[];
+  function spawn(p){
+    var b=map.getBounds();
+    p.lat=Math.max(LAT0,b.getSouth())+Math.random()*(Math.min(LAT1,b.getNorth())-Math.max(LAT0,b.getSouth()));
+    p.lon=Math.max(LON0,b.getWest())+Math.random()*(Math.min(LON1,b.getEast())-Math.max(LON0,b.getWest()));
+    p.age=Math.floor(Math.random()*80);
+    return p;
+  }
+  for(var i=0;i<N;i++) P.push(spawn({}));
+  map.on('movestart zoomstart',function(){ ctx.clearRect(0,0,canvas.width,canvas.height); });
+  map.on('moveend zoomend',function(){ for(var i=0;i<N;i++) spawn(P[i]); ctx.clearRect(0,0,canvas.width,canvas.height); });
+
+  function frame(){
+    if(ready){
+      ctx.globalCompositeOperation='destination-out';
+      ctx.fillStyle='rgba(0,0,0,0.07)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.globalCompositeOperation='source-over';
+      ctx.lineWidth=1.3;
+      var pxPerDeg=256*Math.pow(2,map.getZoom())/360;
+      for(var i=0;i<N;i++){
+        var p=P[i], w=sample(p.lat,p.lon);
+        if(!w||p.age++>90){ spawn(p); p.age=0; continue; }
+        var from=map.latLngToContainerPoint([p.lat,p.lon]);
+        var sp=Math.hypot(w[0],w[1]);
+        p.lon+= w[0]*0.35/pxPerDeg/Math.cos(p.lat*Math.PI/180);
+        p.lat+= w[1]*0.35/pxPerDeg;
+        var to=map.latLngToContainerPoint([p.lat,p.lon]);
+        ctx.strokeStyle=color(sp);
+        ctx.beginPath(); ctx.moveTo(from.x,from.y); ctx.lineTo(to.x,to.y); ctx.stroke();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  slider.addEventListener('input',function(){ hour=+slider.value; label(); });
+  playBtn.addEventListener('click',function(){
+    playing=!playing; playBtn.textContent=playing?'Pause':'Play';
+    clearInterval(timer);
+    if(playing) timer=setInterval(function(){
+      hour=(hour+1)%times.length; slider.value=hour; label();
+    },700);
+  });
+
+  var compass=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  map.on('click',function(e){
+    if(!ready) return;
+    var w=sample(e.latlng.lat,e.latlng.lng);
+    if(!w){ L.popup().setLatLng(e.latlng).setContent('Outside the forecast area.').openOn(map); return; }
+    var kmh=Math.hypot(w[0],w[1])*3.6;
+    var from=(Math.atan2(-w[0],-w[1])*180/Math.PI+360)%360;
+    L.popup().setLatLng(e.latlng).setContent(
+      '<strong>'+kmh.toFixed(0)+' km/h</strong> from the '+compass[Math.round(from/22.5)%16]+
+      '<br>'+when.textContent).openOn(map);
+  });
+})();
+</script>
+</body>
+</html>
