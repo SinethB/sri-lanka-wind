@@ -3,182 +3,290 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sri Lanka Wind</title>
+<title>Sri Lanka Weather</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-  :root{
-    --sea:#0b1d2a; --panel:rgba(11,29,42,.88); --ink:#e8f1f2; --mute:#8fa8b3; --line:#24465a; --accent:#4fd1c5;
-  }
+  :root{--sea:#0b1d2a;--panel:rgba(11,29,42,.9);--ink:#e8f1f2;--mute:#8fa8b3;--line:#24465a;--accent:#4fd1c5}
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:var(--sea);color:var(--ink);font-family:"Instrument Sans",system-ui,sans-serif}
   #map{position:absolute;inset:0;background:var(--sea)}
   .leaflet-tile-pane{filter:invert(1) hue-rotate(195deg) brightness(.75) saturate(.45) contrast(.95)}
-  #wind{position:absolute;inset:0;z-index:450;pointer-events:none}
-  .title{position:absolute;z-index:900;top:14px;left:64px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
-  .title h1{margin:0;font-size:1.05rem;font-weight:600}
-  .title p{margin:2px 0 0;font-size:.82rem;color:var(--mute)}
-  .bar{position:absolute;z-index:900;left:14px;right:14px;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:14px;align-items:center;
-       padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:760px;margin:0 auto}
-  button{font:inherit;color:var(--sea);background:var(--accent);border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer}
+  #field,#wind{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #field{z-index:440;opacity:.7}#wind{z-index:450}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+  .side{position:absolute;z-index:900;top:14px;left:64px;width:276px;padding:12px 14px}
+  h1{margin:0;font-size:1.05rem;font-weight:600}
+  .side p{margin:2px 0 0;font-size:.8rem;color:var(--mute)}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+  .stat b{display:block;font-size:1.1rem;font-variant-numeric:tabular-nums}
+  .stat span{font-size:.74rem;color:var(--mute)}
+  .layers{display:flex;flex-wrap:wrap;gap:6px}
+  button{font:inherit;cursor:pointer;border-radius:8px}
+  .layers button{background:transparent;color:var(--ink);border:1px solid var(--line);padding:5px 10px}
+  .layers button[aria-pressed=true],#play{background:var(--accent);color:var(--sea);border-color:var(--accent);font-weight:600}
+  #play{border:0;padding:8px 14px}
   button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .legend{margin-top:12px;font-size:.76rem;color:var(--mute)}
+  .ramp{height:8px;border-radius:4px;margin:5px 0 3px;border:1px solid var(--line)}
+  .lab{display:flex;justify-content:space-between}
+  .bar{position:absolute;z-index:900;left:14px;right:14px;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:14px;align-items:center;padding:10px 14px;max-width:760px;margin:0 auto}
   input[type=range]{flex:1;accent-color:var(--accent);min-width:80px}
   #when{min-width:128px;font-size:.9rem;text-align:right;font-variant-numeric:tabular-nums}
-  .legend{position:absolute;z-index:900;top:14px;right:14px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:.78rem;color:var(--mute)}
-  .ramp{width:150px;height:8px;border-radius:4px;margin:6px 0 3px;background:linear-gradient(90deg,#3b82f6,#22d3ee,#4ade80,#facc15,#fb923c,#ef4444)}
-  .ramp+div{display:flex;justify-content:space-between}
-  #msg{position:absolute;z-index:1000;top:50%;left:50%;transform:translate(-50%,-50%);padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .detail{position:absolute;z-index:900;top:14px;right:14px;width:344px;max-height:calc(100% - 100px);overflow:auto;padding:12px 14px;display:none}
+  .detail.on{display:block}
+  .dh{display:flex;justify-content:space-between;align-items:start;gap:8px}
+  .dh button{background:transparent;color:var(--mute);border:1px solid var(--line);padding:2px 9px}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+  .tiles div{background:rgba(255,255,255,.05);border-radius:8px;padding:6px 7px}
+  .tiles b{display:block;font-size:.98rem;font-variant-numeric:tabular-nums}.tiles span{font-size:.7rem;color:var(--mute)}
+  .detail h2{font-size:.82rem;margin:12px 0 4px;font-weight:600}
+  .detail ul{margin:6px 0;padding-left:18px;font-size:.86rem;line-height:1.5}
+  svg text{fill:var(--mute);font-size:9px;font-family:inherit}
   .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
-  .leaflet-popup-content{margin:10px 12px;font-family:inherit;font-size:.9rem;line-height:1.4}
-  @media (max-width:560px){.legend{top:auto;bottom:84px;right:14px}.title p{display:none}}
-  @media (prefers-reduced-motion:reduce){#wind{opacity:.7}}
+  .leaflet-popup-content{margin:10px 12px;font-family:inherit;font-size:.88rem;line-height:1.45}
+  body.dist #detail{display:none!important}
+  .dm{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:.78rem;color:#fff;text-shadow:0 1px 2px #000;border:2px solid rgba(255,255,255,.85)}
+  .tabs{display:flex;gap:6px;margin:10px 0}
+  .tabs button{background:transparent;color:var(--ink);border:1px solid var(--line);padding:4px 9px;font-size:.82rem}
+  .tabs button[aria-pressed=true]{background:var(--accent);color:var(--sea);border-color:var(--accent);font-weight:600}
+  .row{display:grid;grid-template-columns:112px 1fr 46px;gap:8px;align-items:center;padding:4px 0;cursor:pointer;font-size:.84rem}
+  .row i{display:block;height:8px;border-radius:4px;background:#60a5fa}
+  .row b{text-align:right;font-variant-numeric:tabular-nums}
+  .row small,.note{display:block;color:var(--mute);font-size:.72rem}
+  .row small.hi{color:#fb923c}
+  .note{margin-top:8px}
+  #msg{position:absolute;z-index:1000;top:50%;left:50%;transform:translate(-50%,-50%);padding:12px 16px}
+  @media (max-width:700px){
+    .side{width:calc(100% - 78px)}.stats{display:none}
+    .detail{top:auto;bottom:80px;left:14px;right:14px;width:auto;max-height:46%}
+  }
 </style>
 </head>
 <body>
-<div id="map"></div>
-<canvas id="wind"></canvas>
-<div class="title"><h1>Sri Lanka wind</h1><p>Forecast from Open-Meteo, 10 m height</p></div>
-<div class="legend">Wind speed (km/h)<div class="ramp"></div><div><span>0</span><span>15</span><span>30</span><span>45+</span></div></div>
-<div class="bar">
+<div id="map"></div><canvas id="field"></canvas><canvas id="wind"></canvas>
+<section class="panel side">
+  <h1>Sri Lanka weather</h1><p>Forecast by Open-Meteo. Click the map for a point forecast.</p>
+  <div class="stats" id="stats"></div>
+  <div class="layers" id="layers" role="group" aria-label="Map layer"></div>
+  <div class="legend"><div id="legT"></div><div class="ramp" id="ramp"></div><div class="lab" id="legL"></div></div>
+</section>
+<aside class="panel detail" id="detail" aria-live="polite"></aside>
+<aside class="panel detail" id="dist" aria-live="polite"></aside>
+<div class="panel bar">
   <button id="play" type="button">Play</button>
   <input id="slider" type="range" min="0" max="0" value="0" aria-label="Forecast hour">
   <div id="when">Loading…</div>
 </div>
-<div id="msg">Loading wind data…</div>
+<div class="panel" id="msg">Loading forecast…</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 (function(){
-  // Grid covering Sri Lanka and nearby sea
-  var LAT0=5.5, LAT1=10.0, LON0=79.0, LON1=82.5, STEP=0.5;
-  var nLat=Math.round((LAT1-LAT0)/STEP)+1, nLon=Math.round((LON1-LON0)/STEP)+1;
-  var lats=[], lons=[];
-  for(var i=0;i<nLat;i++) for(var j=0;j<nLon;j++){ lats.push((LAT0+i*STEP).toFixed(2)); lons.push((LON0+j*STEP).toFixed(2)); }
+  var LAT0=5.5,LAT1=10.0,LON0=79.0,LON1=82.5,STEP=0.5;
+  var nLat=Math.round((LAT1-LAT0)/STEP)+1,nLon=Math.round((LON1-LON0)/STEP)+1,lats=[],lons=[];
+  for(var i=0;i<nLat;i++)for(var j=0;j<nLon;j++){lats.push((LAT0+i*STEP).toFixed(2));lons.push((LON0+j*STEP).toFixed(2));}
 
-  var map=L.map('map',{zoomControl:true,minZoom:6,maxZoom:10,
-    maxBounds:[[3,76],[12.5,85]]})
+  var map=L.map('map',{minZoom:6,maxZoom:10,maxBounds:[[3,76],[12.5,85]]});
   map.fitBounds([[5.7,79.4],[9.9,82.1]],{padding:[60,60]});
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 
-  var canvas=document.getElementById('wind'), ctx=canvas.getContext('2d');
-  var slider=document.getElementById('slider'), when=document.getElementById('when'),
-      playBtn=document.getElementById('play'), msg=document.getElementById('msg');
-  var times=[], U=[], V=[], hour=0, ready=false, playing=false, timer=null;
+  var $=function(id){return document.getElementById(id)};
+  var canvas=$('wind'),ctx=canvas.getContext('2d'),fc=$('field'),fx=fc.getContext('2d'),CELL=6;
+  var slider=$('slider'),when=$('when'),playBtn=$('play'),detail=$('detail');
+  var times=[],D={u:[],v:[],t:[],r:[],p:[]},hour=0,ready=false,playing=false,timer=null,layer='wind',sel=null,marker=null;
 
-  function resize(){ canvas.width=innerWidth; canvas.height=innerHeight; ctx.clearRect(0,0,canvas.width,canvas.height); }
-  addEventListener('resize',resize); resize();
+  function size(){canvas.width=innerWidth;canvas.height=innerHeight;fc.width=Math.ceil(innerWidth/CELL);fc.height=Math.ceil(innerHeight/CELL);ctx.clearRect(0,0,canvas.width,canvas.height);drawField();}
+
+  // colour scales: [value,[r,g,b,a]]
+  var SPEED=[[0,[59,130,246]],[10,[34,211,238]],[20,[74,222,128]],[30,[250,204,21]],[40,[251,146,60]],[50,[239,68,68]]];
+  var FIELDS={
+    temp:{k:'t',name:'Temperature (°C)',labels:['22','27','32','37+'],stops:[[22,[59,130,246,210]],[25,[34,211,238,210]],[28,[74,222,128,210]],[31,[250,204,21,215]],[34,[251,146,60,225]],[37,[239,68,68,235]]]},
+    rain:{k:'r',name:'Rain (mm per hour)',labels:['0','1','3','15+'],stops:[[0,[0,0,0,0]],[0.1,[147,197,253,120]],[1,[59,130,246,190]],[3,[139,92,246,215]],[8,[217,70,239,230]],[15,[244,63,94,240]]]},
+    pres:{k:'p',name:'Sea-level pressure (hPa)',labels:['1002','1008','1014','1018+'],stops:[[1002,[139,92,246,210]],[1006,[59,130,246,210]],[1010,[74,222,128,210]],[1014,[250,204,21,210]],[1018,[251,146,60,220]]]}
+  };
+  function ramp(st,v){
+    if(v<=st[0][0])return st[0][1];
+    for(var i=0;i<st.length-1;i++)if(v<st[i+1][0]){var f=(v-st[i][0])/(st[i+1][0]-st[i][0]),a=st[i][1],b=st[i+1][1],o=[];for(var c=0;c<4;c++)o.push((a[c]==null?255:a[c])+((b[c]==null?255:b[c])-(a[c]==null?255:a[c]))*f);return o;}
+    return st[st.length-1][1];
+  }
+  function windColor(ms){var c=ramp(SPEED,ms*3.6);return 'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';}
+
+  // layer buttons + legend
+  [['wind','Wind'],['temp','Temperature'],['rain','Rain'],['pres','Pressure'],['dist','Districts']].forEach(function(l){
+    var b=document.createElement('button');b.type='button';b.textContent=l[1];b.setAttribute('aria-pressed',l[0]===layer);
+    b.onclick=function(){layer=l[0];[].forEach.call($('layers').children,function(x){x.setAttribute('aria-pressed',x===b)});legend();drawField();ctx.clearRect(0,0,canvas.width,canvas.height);setDist();};
+    $('layers').appendChild(b);
+  });
+  function legend(){
+    var st=layer==='wind'?SPEED:layer==='dist'?DIST:FIELDS[layer].stops,lo=st[0][0],hi=st[st.length-1][0];
+    $('legT').textContent=layer==='wind'?'Wind speed (km/h)':layer==='dist'?'District rain, '+WIN[dWin].t+' (mm)':FIELDS[layer].name;
+    $('ramp').style.background='linear-gradient(90deg,'+st.map(function(s){var c=s[1];return 'rgba('+c[0]+','+c[1]+','+c[2]+','+(c[3]==null?1:Math.max(c[3]/255,.35))+') '+((s[0]-lo)/(hi-lo)*100)+'%'}).join(',')+')';
+    $('legL').innerHTML=(layer==='wind'?['0','15','30','45+']:layer==='dist'?[0,33,67,100].map(function(x,i){return Math.round(x*WIN[dWin].m)+(i==3?'+':'')}):FIELDS[layer].labels).map(function(x){return '<span>'+x+'</span>'}).join('');
+  }
+  legend();
+
+  // grid sampling
+  function wts(lat,lon){
+    if(lat<LAT0||lat>LAT1||lon<LON0||lon>LON1)return null;
+    var fi=(lat-LAT0)/STEP,fj=(lon-LON0)/STEP,i=Math.min(Math.floor(fi),nLat-2),j=Math.min(Math.floor(fj),nLon-2);
+    return [i*nLon+j,fi-i,fj-j];
+  }
+  function val(a,w){var p=w[0],x=w[1],y=w[2];return a[p]*(1-x)*(1-y)+a[p+1]*(1-x)*y+a[p+nLon]*x*(1-y)+a[p+nLon+1]*x*y;}
 
   var url='https://api.open-meteo.com/v1/forecast?latitude='+lats.join(',')+'&longitude='+lons.join(',')+
-    '&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms&forecast_days=3&timezone=Asia%2FColombo';
-
-  fetch(url).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }).then(function(data){
-    var arr=Array.isArray(data)?data:[data];
-    times=arr[0].hourly.time;
-    var n=times.length;
-    for(var t=0;t<n;t++){
-      var u=new Float32Array(arr.length), v=new Float32Array(arr.length);
+    '&hourly=wind_speed_10m,wind_direction_10m,temperature_2m,precipitation,pressure_msl&wind_speed_unit=ms&forecast_days=3&timezone=Asia%2FColombo';
+  fetch(url).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(data){
+    var arr=Array.isArray(data)?data:[data];times=arr[0].hourly.time;
+    for(var t=0;t<times.length;t++){
+      var u=new Float32Array(arr.length),v=u.slice(),tp=u.slice(),rn=u.slice(),ps=u.slice();
       for(var k=0;k<arr.length;k++){
-        var s=arr[k].hourly.wind_speed_10m[t], d=arr[k].hourly.wind_direction_10m[t]*Math.PI/180;
-        u[k]=-s*Math.sin(d); v[k]=-s*Math.cos(d);   // direction is where wind comes from
+        var h=arr[k].hourly,s=h.wind_speed_10m[t],d=h.wind_direction_10m[t]*Math.PI/180;
+        u[k]=-s*Math.sin(d);v[k]=-s*Math.cos(d);tp[k]=h.temperature_2m[t];rn[k]=h.precipitation[t];ps[k]=h.pressure_msl[t];
       }
-      U.push(u); V.push(v);
+      D.u.push(u);D.v.push(v);D.t.push(tp);D.r.push(rn);D.p.push(ps);
     }
-    // start at the current hour
-    var nowLocal=Date.now()+(arr[0].utc_offset_seconds||0)*1000, idx=0;
-    for(var q=0;q<n;q++){ if(Date.parse(times[q]+'Z')<=nowLocal) idx=q; }
-    hour=idx; slider.max=n-1; slider.value=hour; ready=true; msg.remove(); label();
-    requestAnimationFrame(frame);
-  }).catch(function(e){
-    msg.textContent='Could not load wind data ('+e.message+'). Check your connection and reload.';
-  });
+    var nowLocal=Date.now()+(arr[0].utc_offset_seconds||0)*1000;
+    for(var q=0;q<times.length;q++)if(Date.parse(times[q]+'Z')<=nowLocal)hour=q;
+    slider.max=times.length-1;slider.value=hour;ready=true;$('msg').remove();update();requestAnimationFrame(frame);
+  }).catch(function(e){$('msg').textContent='Could not load the forecast ('+e.message+'). Check your connection and reload.';});
 
-  function label(){
-    var d=new Date(times[hour]);
-    when.textContent=d.toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});
+  function dayLabel(t){return new Date(times[t]).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});}
+  function update(){when.textContent=dayLabel(hour);drawField();stats();if(sel)renderDetail();}
+
+  function stats(){
+    var n=D.u[hour].length,mw=0,at=0,mr=0,ap=0;
+    for(var k=0;k<n;k++){mw=Math.max(mw,Math.hypot(D.u[hour][k],D.v[hour][k])*3.6);at+=D.t[hour][k];mr=Math.max(mr,D.r[hour][k]);ap+=D.p[hour][k];}
+    $('stats').innerHTML=[[mw.toFixed(0)+' km/h','Strongest wind'],[(at/n).toFixed(1)+' °C','Average temperature'],[mr.toFixed(1)+' mm/h','Heaviest rain'],[(ap/n).toFixed(0)+' hPa','Average pressure']]
+      .map(function(s){return '<div class="stat"><b>'+s[0]+'</b><span>'+s[1]+'</span></div>'}).join('');
   }
 
-  // Bilinear sample of wind at a location; returns [u,v] or null outside the grid
-  function sample(lat,lon){
-    if(lat<LAT0||lat>LAT1||lon<LON0||lon>LON1) return null;
-    var fi=(lat-LAT0)/STEP, fj=(lon-LON0)/STEP;
-    var i=Math.min(Math.floor(fi),nLat-2), j=Math.min(Math.floor(fj),nLon-2), a=fi-i, b=fj-j;
-    var u=U[hour], v=V[hour];
-    function g(arr){
-      var p=i*nLon+j;
-      return arr[p]*(1-a)*(1-b)+arr[p+1]*(1-a)*b+arr[p+nLon]*a*(1-b)+arr[p+nLon+1]*a*b;
-    }
-    return [g(u),g(v)];
-  }
-
-  function color(ms){
-    var kmh=ms*3.6, stops=[[0,[59,130,246]],[10,[34,211,238]],[20,[74,222,128]],[30,[250,204,21]],[40,[251,146,60]],[50,[239,68,68]]];
-    if(kmh>=50) return 'rgb(239,68,68)';
-    for(var i=0;i<stops.length-1;i++){
-      if(kmh<stops[i+1][0]){
-        var f=(kmh-stops[i][0])/(stops[i+1][0]-stops[i][0]), c0=stops[i][1], c1=stops[i+1][1];
-        return 'rgb('+Math.round(c0[0]+(c1[0]-c0[0])*f)+','+Math.round(c0[1]+(c1[1]-c0[1])*f)+','+Math.round(c0[2]+(c1[2]-c0[2])*f)+')';
+  // colour field (temperature, rain, pressure)
+  var pend=false;
+  function drawField(){
+    if(pend)return;pend=true;requestAnimationFrame(function(){
+      pend=false;fx.clearRect(0,0,fc.width,fc.height);if(!ready||layer==='wind'||layer==='dist')return;
+      var F=FIELDS[layer],a=D[F.k][hour],W=fc.width,H=fc.height,img=fx.createImageData(W,H),lo=[],la=[];
+      for(var c=0;c<W;c++)lo.push(map.containerPointToLatLng([c*CELL+CELL/2,0]).lng);
+      for(var r=0;r<H;r++)la.push(map.containerPointToLatLng([0,r*CELL+CELL/2]).lat);
+      for(r=0;r<H;r++)for(c=0;c<W;c++){
+        var w=wts(la[r],lo[c]);if(!w)continue;
+        var col=ramp(F.stops,val(a,w)),o=(r*W+c)*4;img.data[o]=col[0];img.data[o+1]=col[1];img.data[o+2]=col[2];img.data[o+3]=col[3];
       }
-    }
+      fx.putImageData(img,0,0);
+    });
   }
+  map.on('move zoomend resize',drawField);addEventListener('resize',size);size();
 
-  // Particles live in lat/lon so they stay put when the map moves
-  var N=matchMedia('(max-width:560px)').matches?900:1800, P=[];
+  // wind particles
+  var N=matchMedia('(max-width:700px)').matches?900:1800,P=[];
   function spawn(p){
-    var b=map.getBounds();
-    p.lat=Math.max(LAT0,b.getSouth())+Math.random()*(Math.min(LAT1,b.getNorth())-Math.max(LAT0,b.getSouth()));
-    p.lon=Math.max(LON0,b.getWest())+Math.random()*(Math.min(LON1,b.getEast())-Math.max(LON0,b.getWest()));
-    p.age=Math.floor(Math.random()*80);
-    return p;
+    var b=map.getBounds(),s=Math.max(LAT0,b.getSouth()),n=Math.min(LAT1,b.getNorth()),w=Math.max(LON0,b.getWest()),e=Math.min(LON1,b.getEast());
+    p.lat=s+Math.random()*(n-s);p.lon=w+Math.random()*(e-w);p.age=Math.floor(Math.random()*80);return p;
   }
-  for(var i=0;i<N;i++) P.push(spawn({}));
-  map.on('movestart zoomstart',function(){ ctx.clearRect(0,0,canvas.width,canvas.height); });
-  map.on('moveend zoomend',function(){ for(var i=0;i<N;i++) spawn(P[i]); ctx.clearRect(0,0,canvas.width,canvas.height); });
-
+  for(var i2=0;i2<N;i2++)P.push(spawn({}));
+  map.on('movestart zoomstart',function(){ctx.clearRect(0,0,canvas.width,canvas.height);});
+  map.on('moveend zoomend',function(){for(var i=0;i<N;i++)spawn(P[i]);ctx.clearRect(0,0,canvas.width,canvas.height);});
   function frame(){
-    if(ready){
-      ctx.globalCompositeOperation='destination-out';
-      ctx.fillStyle='rgba(0,0,0,0.07)';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.globalCompositeOperation='source-over';
-      ctx.lineWidth=1.3;
-      var pxPerDeg=256*Math.pow(2,map.getZoom())/360;
-      for(var i=0;i<N;i++){
-        var p=P[i], w=sample(p.lat,p.lon);
-        if(!w||p.age++>90){ spawn(p); p.age=0; continue; }
-        var from=map.latLngToContainerPoint([p.lat,p.lon]);
-        var sp=Math.hypot(w[0],w[1]);
-        p.lon+= w[0]*0.35/pxPerDeg/Math.cos(p.lat*Math.PI/180);
-        p.lat+= w[1]*0.35/pxPerDeg;
-        var to=map.latLngToContainerPoint([p.lat,p.lon]);
-        ctx.strokeStyle=color(sp);
-        ctx.beginPath(); ctx.moveTo(from.x,from.y); ctx.lineTo(to.x,to.y); ctx.stroke();
-      }
+    ctx.globalCompositeOperation='destination-out';ctx.fillStyle='rgba(0,0,0,0.07)';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.globalCompositeOperation='source-over';ctx.lineWidth=1.3;
+    var ppd=256*Math.pow(2,map.getZoom())/360;
+    for(var i=0;i<N;i++){
+      var p=P[i],w=wts(p.lat,p.lon);
+      if(!w||p.age++>90){spawn(p);p.age=0;continue;}
+      var u=val(D.u[hour],w),v=val(D.v[hour],w),sp=Math.hypot(u,v),a=map.latLngToContainerPoint([p.lat,p.lon]);
+      p.lon+=u*0.35/ppd/Math.cos(p.lat*Math.PI/180);p.lat+=v*0.35/ppd;
+      var b=map.latLngToContainerPoint([p.lat,p.lon]);
+      ctx.strokeStyle=layer==='wind'?windColor(sp):'rgba(255,255,255,.7)';
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     }
     requestAnimationFrame(frame);
   }
 
-  slider.addEventListener('input',function(){ hour=+slider.value; label(); });
+  // district rainfall
+  var DIST=[[0,[96,165,250,150]],[20,[96,165,250,200]],[40,[59,130,246,225]],[60,[139,92,246,235]],[80,[217,70,239,240]],[100,[244,63,94,245]]];
+  var WIN={p24:{t:'past 24 h',l:'Past 24 h',m:1,d:1},n24:{t:'next 24 h',l:'Next 24 h',m:1,d:1},n72:{t:'next 72 h',l:'Next 72 h',m:2,d:3}};
+  var DN=[['Ampara',7.30,81.67],['Anuradhapura',8.34,80.41],['Badulla',6.99,81.06],['Batticaloa',7.71,81.70],['Colombo',6.93,79.86],['Galle',6.05,80.22],['Gampaha',7.09,80.00],['Hambantota',6.12,81.12],['Jaffna',9.66,80.01],['Kalutara',6.58,79.96],['Kandy',7.29,80.63],['Kegalle',7.25,80.35],['Kilinochchi',9.39,80.40],['Kurunegala',7.49,80.37],['Mannar',8.98,79.91],['Matale',7.47,80.62],['Matara',5.95,80.55],['Monaragala',6.87,81.35],['Mullaitivu',9.27,80.81],['Nuwara Eliya',6.97,80.77],['Polonnaruwa',7.94,81.00],['Puttalam',8.03,79.84],['Ratnapura',6.68,80.40],['Trincomalee',8.57,81.23],['Vavuniya',8.75,80.50]];
+  var dWin='n24',dData=null,clim=null,dLayer=L.layerGroup(),mk={};
+  fetch('https://api.open-meteo.com/v1/forecast?latitude='+DN.map(function(d){return d[1]}).join(',')+'&longitude='+DN.map(function(d){return d[2]}).join(',')+'&hourly=precipitation&past_days=2&forecast_days=4&timezone=Asia%2FColombo')
+    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(data){
+      var arr=Array.isArray(data)?data:[data],tm=arr[0].hourly.time,now=Date.now()+(arr[0].utc_offset_seconds||0)*1000,idx=0;
+      for(var q=0;q<tm.length;q++)if(Date.parse(tm[q]+'Z')<=now)idx=q;
+      function sum(h,a,b){var t=0;for(var i=Math.max(0,a);i<=Math.min(h.length-1,b);i++)t+=h[i]||0;return t;}
+      dData=arr.map(function(o,k){var h=o.hourly.precipitation;return {n:DN[k][0],lat:DN[k][1],lon:DN[k][2],p24:sum(h,idx-23,idx),n24:sum(h,idx+1,idx+24),n72:sum(h,idx+1,idx+72)};});
+      renderDist();
+    }).catch(function(e){if(layer==='dist')$('dist').textContent='Could not load district rainfall ('+e.message+').';});
+  fetch('climatology.json').then(function(r){return r.ok?r.json():null}).then(function(j){clim=j;renderDist();}).catch(function(){});
+
+  function usual(d,v){
+    var c=clim&&clim.districts&&clim.districts[d.n];if(!c)return '';
+    var norm=c[new Date().getMonth()]*WIN[dWin].d;if(!(norm>=1))return '';
+    var r=v/norm,t=r>=2?'well above usual':r>=1.3?'above usual':r>=0.7?'about usual':'below usual';
+    return '<small class="'+(r>=2?'hi':'')+'">'+t+' ('+r.toFixed(1)+'× the '+new Date().toLocaleString('en-GB',{month:'long'})+' average)</small>';
+  }
+  function setDist(){
+    var on=layer==='dist';document.body.classList.toggle('dist',on);
+    if(on){dLayer.addTo(map);renderDist();}else{map.removeLayer(dLayer);$('dist').className='panel detail';}
+  }
+  function renderDist(){
+    if(layer!=='dist')return;var el=$('dist');el.className='panel detail on';
+    if(!dData){el.textContent='Loading district rainfall…';return;}
+    var W=WIN[dWin],rows=dData.slice().sort(function(a,b){return b[dWin]-a[dWin]}),max=Math.max(1,rows[0][dWin]);
+    dLayer.clearLayers();mk={};
+    rows.forEach(function(d){
+      var v=d[dWin],c=ramp(DIST,v/W.m),m=L.marker([d.lat,d.lon],{icon:L.divIcon({className:'',iconSize:[34,34],html:'<div class="dm" style="background:rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+Math.max(.6,c[3]/255)+')">'+Math.round(v)+'</div>'})});
+      m.bindPopup('<strong>'+d.n+'</strong><br>Past 24 h: '+d.p24.toFixed(1)+' mm<br>Next 24 h: '+d.n24.toFixed(1)+' mm<br>Next 72 h: '+d.n72.toFixed(1)+' mm'+usual(d,v).replace(/small/g,'span'));
+      m.addTo(dLayer);mk[d.n]=m;
+    });
+    el.innerHTML='<h1>District rainfall</h1><div class="tabs">'+Object.keys(WIN).map(function(k){return '<button type="button" data-w="'+k+'" aria-pressed="'+(k===dWin)+'">'+WIN[k].l+'</button>'}).join('')+'</div>'+
+      rows.map(function(d){return '<div class="row" data-n="'+d.n+'"><span>'+d.n+usual(d,d[dWin])+'</span><i style="width:'+Math.max(2,d[dWin]/max*100)+'%"></i><b>'+d[dWin].toFixed(d[dWin]<10?1:0)+'</b></div>'}).join('')+
+      '<span class="note">Millimetres per district centre, from the Open-Meteo model. '+(clim?'"Usual" is the '+clim.period+' average.':'Add climatology.json to see how this compares with normal.')+' For official warnings see the Department of Meteorology.</span>';
+    [].forEach.call(el.querySelectorAll('[data-w]'),function(b){b.onclick=function(){dWin=b.getAttribute('data-w');legend();renderDist();};});
+    [].forEach.call(el.querySelectorAll('.row'),function(r){r.onclick=function(){var d=dData.filter(function(x){return x.n===r.getAttribute('data-n')})[0];map.flyTo([d.lat,d.lon],8);mk[d.n].openPopup();};});
+  }
+
+  // time controls
+  slider.addEventListener('input',function(){hour=+slider.value;update();});
   playBtn.addEventListener('click',function(){
-    playing=!playing; playBtn.textContent=playing?'Pause':'Play';
-    clearInterval(timer);
-    if(playing) timer=setInterval(function(){
-      hour=(hour+1)%times.length; slider.value=hour; label();
-    },700);
+    playing=!playing;playBtn.textContent=playing?'Pause':'Play';clearInterval(timer);
+    if(playing)timer=setInterval(function(){hour=(hour+1)%times.length;slider.value=hour;update();},700);
   });
 
+  // point forecast
   var compass=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
   map.on('click',function(e){
-    if(!ready) return;
-    var w=sample(e.latlng.lat,e.latlng.lng);
-    if(!w){ L.popup().setLatLng(e.latlng).setContent('Outside the forecast area.').openOn(map); return; }
-    var kmh=Math.hypot(w[0],w[1])*3.6;
-    var from=(Math.atan2(-w[0],-w[1])*180/Math.PI+360)%360;
-    L.popup().setLatLng(e.latlng).setContent(
-      '<strong>'+kmh.toFixed(0)+' km/h</strong> from the '+compass[Math.round(from/22.5)%16]+
-      '<br>'+when.textContent).openOn(map);
+    if(layer==='dist'||!ready||!wts(e.latlng.lat,e.latlng.lng))return;
+    sel=e.latlng;if(!marker)marker=L.circleMarker(sel,{radius:6,color:'#fff',weight:2,fillColor:'#4fd1c5',fillOpacity:1}).addTo(map);
+    marker.setLatLng(sel);renderDetail();
   });
+  function chart(v,o){
+    var W=316,H=96,pl=30,pr=6,pt=8,pb=16,n=v.length,lo=o.lo!=null?o.lo:Math.min.apply(null,v),hi=o.hi!=null?o.hi:Math.max.apply(null,v);
+    if(hi-lo<1)hi=lo+1;
+    var X=function(i){return pl+i*(W-pl-pr)/(n-1)},Y=function(x){return H-pb-(x-lo)/(hi-lo)*(H-pb-pt)};
+    var s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="'+o.label+'">';
+    [lo,hi].forEach(function(g){s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(g)+'" y2="'+Y(g)+'" stroke="#24465a"/><text x="'+(pl-4)+'" y="'+(Y(g)+3)+'" text-anchor="end">'+g.toFixed(o.d||0)+'</text>';});
+    for(var i=0;i<n;i++)if(times[i].slice(11)==='00:00')s+='<line x1="'+X(i)+'" x2="'+X(i)+'" y1="'+pt+'" y2="'+(H-pb)+'" stroke="#24465a" stroke-dasharray="2 3"/><text x="'+(X(i)+3)+'" y="'+(H-4)+'">'+new Date(times[i]).toLocaleDateString('en-GB',{weekday:'short'})+'</text>';
+    if(o.bar){var bw=(W-pl-pr)/n;for(i=0;i<n;i++)s+='<rect x="'+(X(i)-bw/2)+'" y="'+Y(v[i])+'" width="'+Math.max(bw-.6,.8)+'" height="'+(Y(lo)-Y(v[i]))+'" fill="'+o.c+'"/>';}
+    else{var pts=[];for(i=0;i<n;i++)pts.push(X(i).toFixed(1)+','+Y(v[i]).toFixed(1));s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+o.c+'" stroke-width="2"/>';}
+    return s+'<line x1="'+X(hour)+'" x2="'+X(hour)+'" y1="'+pt+'" y2="'+(H-pb)+'" stroke="#fff" stroke-width="1.2"/></svg>';
+  }
+  function renderDetail(){
+    var w=wts(sel.lat,sel.lng),n=times.length,S={s:[],t:[],r:[],p:[]};
+    for(var t=0;t<n;t++){S.s.push(Math.hypot(val(D.u[t],w),val(D.v[t],w))*3.6);S.t.push(val(D.t[t],w));S.r.push(Math.max(0,val(D.r[t],w)));S.p.push(val(D.p[t],w));}
+    var end=Math.min(hour+23,n-1),pk=hour,wet=hour,rs=0,tmin=99,tmax=-99;
+    for(t=hour;t<=end;t++){if(S.s[t]>S.s[pk])pk=t;if(S.r[t]>S.r[wet])wet=t;rs+=S.r[t];tmin=Math.min(tmin,S.t[t]);tmax=Math.max(tmax,S.t[t]);}
+    var dp=S.p[end]-S.p[hour],dir=(Math.atan2(-val(D.u[hour],w),-val(D.v[hour],w))*180/Math.PI+360)%360;
+    detail.className='panel detail on';
+    detail.innerHTML='<div class="dh"><div><h1>Point forecast</h1><p style="margin:2px 0 0;font-size:.8rem;color:var(--mute)">'+sel.lat.toFixed(2)+'°N, '+sel.lng.toFixed(2)+'°E · '+dayLabel(hour)+'</p></div><button type="button" id="x" aria-label="Close">×</button></div>'+
+      '<div class="tiles"><div><b>'+S.t[hour].toFixed(1)+'°</b><span>Temp °C</span></div><div><b>'+S.s[hour].toFixed(0)+' '+compass[Math.round(dir/22.5)%16]+'</b><span>Wind km/h</span></div><div><b>'+S.r[hour].toFixed(1)+'</b><span>Rain mm/h</span></div><div><b>'+S.p[hour].toFixed(0)+'</b><span>hPa</span></div></div>'+
+      '<h2>Next 24 hours</h2><ul><li>Temperature between '+tmin.toFixed(0)+' and '+tmax.toFixed(0)+' °C.</li><li>Wind peaks at '+S.s[pk].toFixed(0)+' km/h around '+dayLabel(pk)+'.</li><li>'+
+      (rs<0.2?'Little or no rain expected.':'About '+rs.toFixed(1)+' mm of rain, heaviest around '+dayLabel(wet)+'.')+'</li><li>Pressure is '+(dp<-1?'falling':dp>1?'rising':'steady')+' ('+(dp>0?'+':'')+dp.toFixed(1)+' hPa).</li></ul>'+
+      '<h2>Temperature (°C)</h2>'+chart(S.t,{c:'#fb923c',label:'Temperature forecast'})+
+      '<h2>Rain (mm per hour)</h2>'+chart(S.r,{c:'#60a5fa',bar:true,lo:0,hi:Math.max(2,Math.max.apply(null,S.r)),d:1,label:'Rain forecast'})+
+      '<h2>Wind speed (km/h)</h2>'+chart(S.s,{c:'#4fd1c5',lo:0,label:'Wind forecast'});
+    $('x').onclick=function(){sel=null;detail.className='panel detail';if(marker){marker.remove();marker=null;}};
+  }
 })();
 </script>
 </body>
